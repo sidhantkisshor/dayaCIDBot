@@ -4,7 +4,15 @@ import { initializeDatabase } from '../lib/database/index.js';
 import { verifyWebhookSecret } from '../lib/utils/security.js';
 
 // Initialize database connection
-await initializeDatabase();
+const db = await initializeDatabase();
+console.log(`[STARTUP] Database initialized: ${db ? 'SUCCESS' : 'FAILED'}`);
+
+// Check bot token
+if (!process.env.TELEGRAM_BOT_TOKEN) {
+  console.error('[CRITICAL] TELEGRAM_BOT_TOKEN is not set!');
+} else {
+  console.log('[STARTUP] Bot token is configured');
+}
 
 export default async function handler(req, res) {
   // Only accept POST requests
@@ -27,13 +35,20 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Invalid update format' });
     }
 
+    // Log the update type
+    const updateType = update.message ? 'message' :
+                      update.callback_query ? 'callback_query' :
+                      update.inline_query ? 'inline_query' : 'other';
+    console.log(`[WEBHOOK] Received ${updateType} update`);
+
     // Process the update
     await handleUpdate(update);
 
     // Always return 200 OK to Telegram
     return res.status(200).json({ ok: true });
   } catch (error) {
-    console.error('Webhook error:', error);
+    console.error('[WEBHOOK ERROR] Full error:', error);
+    console.error('[WEBHOOK ERROR] Stack:', error.stack);
     // Still return 200 to prevent Telegram from retrying
     return res.status(200).json({ ok: true, error: 'Internal error' });
   }

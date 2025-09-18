@@ -3,7 +3,10 @@
     "allow": [
       "Bash(mkdir:*)",
       "Bash(npm init:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(vercel)",
+      "Bash(npx vercel:*)",
+      "Bash(git add:*)"
     ],
     "deny": []
   }
