@@ -10,18 +10,24 @@
     "verify": "node scripts/verify-setup.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": ["telegram", "bot", "trading", "anti-spam", "moderation"],
+  "keywords": [
+    "telegram",
+    "bot",
+    "trading",
+    "anti-spam",
+    "moderation"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "node-telegram-bot-api": "^0.64.0",
-    "@vercel/kv": "^1.0.1",
     "@supabase/supabase-js": "^2.39.0",
-    "node-fetch": "^3.3.2"
+    "@vercel/kv": "^1.0.1",
+    "node-fetch": "^3.3.2",
+    "node-telegram-bot-api": "^0.64.0"
   },
   "devDependencies": {
-    "vercel": "^32.7.2",
     "@types/node": "^20.10.6",
-    "dotenv": "^16.3.1"
+    "dotenv": "^16.3.1",
+    "vercel": "^32.7.2"
   }
 }

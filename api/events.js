@@ -1,4 +1,22 @@
 // Server-Sent Events for real-time updates
+import { initializeDatabase } from '../lib/database/index.js';
+
+// Helper to initialize extended database
+async function initializeExtendedDatabase() {
+    const baseDb = await initializeDatabase();
+
+    // If KV database is available, use extended version
+    if (process.env.KV_REST_API_URL) {
+        try {
+            const { initializeKVExtended } = await import('../lib/database/vercel-kv-extended.js');
+            return await initializeKVExtended();
+        } catch (error) {
+            console.error('Failed to initialize extended KV:', error);
+        }
+    }
+
+    return baseDb;
+}
 
 export default async function handler(req, res) {
     if (req.method !== 'GET') {
@@ -11,47 +29,49 @@ export default async function handler(req, res) {
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('Access-Control-Allow-Origin', '*');
 
+    // Initialize database
+    const db = await initializeExtendedDatabase();
+
     // Send initial connection message
     res.write('data: {"type":"connected","message":"Connected to event stream"}\n\n');
 
-    // Send periodic updates (mock data for demonstration)
-    const interval = setInterval(() => {
-        // Random event types
-        const eventTypes = ['message', 'user', 'spam'];
-        const eventType = eventTypes[Math.floor(Math.random() * eventTypes.length)];
+    // Track last event timestamp
+    let lastEventTime = Date.now();
 
-        let data;
-        switch (eventType) {
-            case 'message':
-                data = {
-                    type: 'message',
-                    timestamp: Date.now(),
-                    username: `User${Math.floor(Math.random() * 100)}`,
-                    message: 'Sample message content',
-                    score: Math.floor(Math.random() * 10),
-                    spam: Math.random() > 0.7,
-                    action: Math.random() > 0.5 ? 'deleted' : 'allowed'
-                };
-                break;
+    // Send periodic updates
+    const interval = setInterval(async () => {
+        try {
+            // Check for new events from database
+            if (db.getEventStream) {
+                const events = await db.getEventStream(lastEventTime);
 
-            case 'user':
-                data = {
-                    type: 'user',
-                    count: Math.floor(Math.random() * 200) + 50
-                };
-                break;
+                for (const event of events) {
+                    res.write(`data: ${JSON.stringify(event.data)}\n\n`);
+                    lastEventTime = Math.max(lastEventTime, event.timestamp);
+                }
+            }
 
-            case 'spam':
-                data = {
-                    type: 'spam',
-                    detected: true,
-                    pattern: 'CRYPTO_SCAMS',
-                    score: Math.floor(Math.random() * 5) + 5
-                };
-                break;
+            // Send heartbeat to keep connection alive
+            res.write(`:heartbeat\n\n`);
+
+            // If no real events and in development, send mock data occasionally
+            if (!db.getEventStream || process.env.NODE_ENV !== 'production') {
+                if (Math.random() < 0.1) { // 10% chance per interval
+                    const mockData = {
+                        type: 'message',
+                        timestamp: Date.now(),
+                        username: `User${Math.floor(Math.random() * 100)}`,
+                        message: 'Sample message content',
+                        score: Math.floor(Math.random() * 10),
+                        spam: Math.random() > 0.7,
+                        action: Math.random() > 0.5 ? 'deleted' : 'allowed'
+                    };
+                    res.write(`data: ${JSON.stringify(mockData)}\n\n`);
+                }
+            }
+        } catch (error) {
+            console.error('Error sending events:', error);
         }
-
-        res.write(`data: ${JSON.stringify(data)}\n\n`);
     }, 5000); // Send update every 5 seconds
 
     // Clean up on client disconnect
