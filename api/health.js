@@ -1,4 +1,3 @@
-import TelegramBot from 'node-telegram-bot-api';
 import { initializeDatabase } from '../lib/database/index.js';
 
 export default async function handler(req, res) {
@@ -34,20 +33,26 @@ export default async function handler(req, res) {
             if (!process.env.TELEGRAM_BOT_TOKEN) {
                 health.bot.error = 'No bot token configured';
             } else {
-                // Create temporary bot instance for health check
-                const tempBot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN);
-                // Try to get bot info
-                const botInfo = await tempBot.getMe();
-                if (botInfo) {
+                // Use fetch to check bot status instead of creating new instance
+                const token = process.env.TELEGRAM_BOT_TOKEN;
+
+                // Get bot info
+                const botInfoResponse = await fetch(`https://api.telegram.org/bot${token}/getMe`);
+                const botInfoData = await botInfoResponse.json();
+
+                if (botInfoData.ok) {
                     health.bot.connected = true;
-                    health.bot.username = botInfo.username;
-                    health.bot.id = botInfo.id;
+                    health.bot.username = botInfoData.result.username;
+                    health.bot.id = botInfoData.result.id;
                 }
 
                 // Check webhook status
-                const webhookInfo = await tempBot.getWebhookInfo();
-                if (webhookInfo && webhookInfo.url) {
-                    health.bot.webhook = true;
+                const webhookResponse = await fetch(`https://api.telegram.org/bot${token}/getWebhookInfo`);
+                const webhookData = await webhookResponse.json();
+
+                if (webhookData.ok && webhookData.result) {
+                    const webhookInfo = webhookData.result;
+                    health.bot.webhook = !!webhookInfo.url;
                     health.bot.webhookUrl = webhookInfo.url;
                     health.bot.pendingUpdates = webhookInfo.pending_update_count || 0;
 
