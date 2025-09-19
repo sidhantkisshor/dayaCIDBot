@@ -1,7 +1,9 @@
 import TelegramBot from 'node-telegram-bot-api';
 
 // Create bot instance
-const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN);
+const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+console.log('Bot token available:', !!TOKEN, 'Length:', TOKEN?.length);
+const bot = new TelegramBot(TOKEN);
 
 // Spam patterns
 const SPAM_PATTERNS = [
@@ -56,9 +58,13 @@ function isSpam(text) {
 
 // Main webhook handler
 export default async function handler(req, res) {
+  console.log('Webhook called:', req.method);
+
   if (req.method !== 'POST') {
-    return res.status(200).json({ ok: true });
+    return res.status(200).json({ ok: true, method: req.method });
   }
+
+  console.log('Update received:', JSON.stringify(req.body));
 
   try {
     const { message, edited_message } = req.body;
@@ -100,14 +106,19 @@ export default async function handler(req, res) {
       switch (command) {
         case '/start':
         case '/help':
-          await bot.sendMessage(
-            chat.id,
-            `🛡️ DayaCID Bot - Spam Blocker\n\n` +
-            `I automatically detect and ban spammers.\n\n` +
-            `Admin commands:\n` +
-            `/ban - Ban user (reply to message)\n` +
-            `/stats - View statistics`
-          );
+          try {
+            await bot.sendMessage(
+              chat.id,
+              `🛡️ DayaCID Bot - Spam Blocker\n\n` +
+              `I automatically detect and ban spammers.\n\n` +
+              `Admin commands:\n` +
+              `/ban - Ban user (reply to message)\n` +
+              `/stats - View statistics`
+            );
+            console.log('Help message sent to', chat.id);
+          } catch (err) {
+            console.error('Failed to send help message:', err.message);
+          }
           break;
 
         case '/ban':
