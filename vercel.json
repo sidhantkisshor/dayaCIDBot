@@ -2,12 +2,34 @@
   "functions": {
     "api/webhook.js": {
       "maxDuration": 10
+    },
+    "api/events.js": {
+      "maxDuration": 60
     }
   },
   "rewrites": [
     {
       "source": "/api/telegram-webhook",
       "destination": "/api/webhook"
+    },
+    {
+      "source": "/",
+      "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE, OPTIONS"
+        }
+      ]
     }
   ],
   "env": {
