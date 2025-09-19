@@ -32,6 +32,9 @@ export default async function handler(req, res) {
     // Initialize database
     const db = await initializeExtendedDatabase();
 
+    // Send headers to keep connection alive
+    res.write(':ok\n\n');
+
     // Send initial connection message
     res.write('data: {"type":"connected","message":"Connected to event stream"}\n\n');
 
@@ -72,7 +75,7 @@ export default async function handler(req, res) {
         } catch (error) {
             console.error('Error sending events:', error);
         }
-    }, 5000); // Send update every 5 seconds
+    }, 3000); // Send update every 3 seconds
 
     // Clean up on client disconnect
     req.on('close', () => {

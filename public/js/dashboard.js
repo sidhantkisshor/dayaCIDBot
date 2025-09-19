@@ -8,7 +8,10 @@ document.addEventListener('DOMContentLoaded', () => {
     feather.replace();
     initCharts();
     loadDashboardData();
+    checkBotHealth();
     startRealTimeUpdates();
+    // Check health every 30 seconds
+    setInterval(checkBotHealth, 30000);
 });
 
 // Initialize Charts
@@ -109,23 +112,43 @@ async function loadDashboardData() {
 
 // Start Real-Time Updates
 function startRealTimeUpdates() {
-    if (!eventSource) {
+    if (eventSource) {
+        eventSource.close();
+    }
+
+    try {
         eventSource = new EventSource('/api/events');
 
-        eventSource.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            handleRealTimeUpdate(data);
+        eventSource.onopen = () => {
+            console.log('EventSource connected');
+            updateConnectionStatus('connected');
         };
 
-        eventSource.onerror = () => {
-            console.error('EventSource connection error');
-            document.getElementById('status').innerHTML = `
-                <span class="inline-block w-2 h-2 bg-red-500 rounded-full mr-1"></span>
-                Disconnected
-            `;
-            document.getElementById('status').className =
-                'ml-4 px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800';
+        eventSource.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                if (data.type === 'connected') {
+                    updateConnectionStatus('connected');
+                }
+                handleRealTimeUpdate(data);
+            } catch (error) {
+                console.error('Error parsing event data:', error);
+            }
         };
+
+        eventSource.onerror = (error) => {
+            console.error('EventSource connection error:', error);
+            updateConnectionStatus('disconnected');
+
+            // Retry connection after 5 seconds
+            setTimeout(() => {
+                console.log('Retrying EventSource connection...');
+                startRealTimeUpdates();
+            }, 5000);
+        };
+    } catch (error) {
+        console.error('Failed to create EventSource:', error);
+        updateConnectionStatus('error');
     }
 }
 
@@ -299,10 +322,91 @@ function getLast7Days() {
     return days;
 }
 
+// Check Bot Health
+async function checkBotHealth() {
+    try {
+        const response = await fetch('/api/health');
+        const health = await response.json();
+
+        console.log('Health check:', health);
+
+        if (health.status === 'healthy') {
+            updateConnectionStatus('connected', health.bot.username);
+        } else if (health.status === 'degraded') {
+            updateConnectionStatus('degraded', health.bot.username);
+        } else {
+            updateConnectionStatus('disconnected');
+        }
+
+        // Update bot info if available
+        if (health.bot.username) {
+            const headerTitle = document.querySelector('h1');
+            if (headerTitle && !headerTitle.textContent.includes('@')) {
+                headerTitle.textContent = `🤖 DayaCID Bot (@${health.bot.username})`;
+            }
+        }
+
+        // Show warnings
+        if (!health.bot.connected && health.bot.error) {
+            console.error('Bot error:', health.bot.error);
+            if (health.bot.error.includes('No bot token')) {
+                showNotification('Bot token not configured in environment', 'error');
+            }
+        }
+
+        if (!health.database.connected) {
+            console.warn('Database not connected, using:', health.database.type);
+        }
+
+    } catch (error) {
+        console.error('Health check failed:', error);
+        updateConnectionStatus('error');
+    }
+}
+
+// Update Connection Status
+function updateConnectionStatus(status, botUsername = null) {
+    const statusElement = document.getElementById('status');
+
+    switch (status) {
+        case 'connected':
+            statusElement.innerHTML = `
+                <span class="inline-block w-2 h-2 bg-green-500 rounded-full pulse mr-1"></span>
+                ${botUsername ? `Active (@${botUsername})` : 'Connected'}
+            `;
+            statusElement.className = 'ml-4 px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800';
+            break;
+
+        case 'degraded':
+            statusElement.innerHTML = `
+                <span class="inline-block w-2 h-2 bg-yellow-500 rounded-full pulse mr-1"></span>
+                Degraded
+            `;
+            statusElement.className = 'ml-4 px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800';
+            break;
+
+        case 'disconnected':
+            statusElement.innerHTML = `
+                <span class="inline-block w-2 h-2 bg-red-500 rounded-full mr-1"></span>
+                Disconnected
+            `;
+            statusElement.className = 'ml-4 px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800';
+            break;
+
+        case 'error':
+            statusElement.innerHTML = `
+                <span class="inline-block w-2 h-2 bg-gray-500 rounded-full mr-1"></span>
+                Error
+            `;
+            statusElement.className = 'ml-4 px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800';
+            break;
+    }
+}
+
 function showNotification(message, type = 'info') {
     // Create notification element
     const notification = document.createElement('div');
-    notification.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg fade-in ${
+    notification.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg fade-in z-50 ${
         type === 'success' ? 'bg-green-500 text-white' :
         type === 'error' ? 'bg-red-500 text-white' :
         'bg-blue-500 text-white'
