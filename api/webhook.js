@@ -1,29 +1,94 @@
-import TelegramBot from 'node-telegram-bot-api';
+// Simple webhook without library - just direct API calls
+const TOKEN = process.env.TELEGRAM_BOT_TOKEN || '7660494644:AAE1U_K5IXqGoQQ2NbrqXJkQaonRm9z2KpU';
 
-// Create bot instance
-const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-console.log('Bot token available:', !!TOKEN, 'Length:', TOKEN?.length);
-const bot = new TelegramBot(TOKEN);
+// Send message using Telegram API
+async function sendMessage(chatId, text) {
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: text,
+        parse_mode: 'HTML'
+      })
+    });
+    const result = await response.json();
+    console.log('Send message result:', result);
+    return result;
+  } catch (error) {
+    console.error('Failed to send message:', error);
+    return null;
+  }
+}
+
+// Delete message
+async function deleteMessage(chatId, messageId) {
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${TOKEN}/deleteMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        message_id: messageId
+      })
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to delete message:', error);
+    return null;
+  }
+}
+
+// Ban user
+async function banUser(chatId, userId) {
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${TOKEN}/banChatMember`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        user_id: userId
+      })
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to ban user:', error);
+    return null;
+  }
+}
+
+// Check if user is admin
+async function isAdmin(chatId, userId) {
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${TOKEN}/getChatMember`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        user_id: userId
+      })
+    });
+    const result = await response.json();
+    if (result.ok) {
+      return ['administrator', 'creator'].includes(result.result.status);
+    }
+    return false;
+  } catch (error) {
+    console.error('Failed to check admin:', error);
+    return false;
+  }
+}
 
 // Spam patterns
 const SPAM_PATTERNS = [
-  // Crypto scams
-  /\b(free\s+crypto|airdrop|100x\s+guaranteed|pump\s+signal|get\s+rich\s+quick)/i,
+  /\b(free\s+crypto|airdrop|100x\s+guaranteed|pump\s+signal)/i,
   /\b(bitcoin\s+doubler|ethereum\s+giveaway|crypto\s+investment)/i,
-
-  // Links and promotions
-  /\b(t\.me\/joinchat|wa\.me|bit\.ly|tinyurl|click\s+here\s+now)/i,
-  /\b(join\s+my\s+channel|check\s+out|promo\s+code|discount\s+offer)/i,
-
-  // Trading scams
-  /\b(guaranteed\s+profit|forex\s+signal|binary\s+option|trading\s+bot\s+free)/i,
-  /\b(make\s+\$?\d+\s+daily|earn\s+from\s+home|passive\s+income)/i,
-
-  // Adult content
+  /\b(t\.me\/joinchat|wa\.me|bit\.ly|tinyurl)/i,
+  /\b(guaranteed\s+profit|forex\s+signal|binary\s+option)/i,
+  /\b(make\s+\$?\d+\s+daily|earn\s+from\s+home)/i,
   /\b(onlyfans|adult\s+content|18\+|nsfw|xxx|porn)/i,
-
-  // Phishing
-  /\b(verify\s+your\s+account|suspended\s+account|click\s+to\s+verify)/i,
+  /\b(verify\s+your\s+account|suspended\s+account)/i,
 ];
 
 // Check if message is spam
@@ -36,152 +101,121 @@ function isSpam(text) {
   for (const pattern of SPAM_PATTERNS) {
     if (pattern.test(text)) {
       score += 3;
+      console.log('Pattern matched:', pattern);
     }
   }
 
-  // Check for excessive caps
+  // Check excessive caps
   if (text.length > 10) {
     const capsRatio = (text.match(/[A-Z]/g) || []).length / text.length;
-    if (capsRatio > 0.7) score += 2;
+    if (capsRatio > 0.7) {
+      score += 2;
+      console.log('Excessive caps detected');
+    }
   }
 
-  // Check for excessive emojis
+  // Check excessive emojis
   const emojiCount = (text.match(/[\u{1F300}-\u{1F9FF}]/gu) || []).length;
-  if (emojiCount > 5) score += 2;
+  if (emojiCount > 5) {
+    score += 2;
+    console.log('Excessive emojis detected');
+  }
 
-  // Check for suspicious links
-  const linkCount = (text.match(/https?:\/\//gi) || []).length;
-  if (linkCount > 2) score += 2;
-
+  console.log('Spam score:', score);
   return score >= 5;
 }
 
 // Main webhook handler
 export default async function handler(req, res) {
-  console.log('Webhook called:', req.method);
+  console.log('=== Webhook Request ===');
+  console.log('Method:', req.method);
+  console.log('Body:', JSON.stringify(req.body));
 
+  // Only process POST requests
   if (req.method !== 'POST') {
-    return res.status(200).json({ ok: true, method: req.method });
+    return res.status(200).json({ ok: true });
   }
 
-  console.log('Update received:', JSON.stringify(req.body));
-
   try {
-    const { message, edited_message } = req.body;
-    const msg = message || edited_message;
+    const update = req.body;
 
-    if (!msg) {
-      return res.status(200).json({ ok: true });
-    }
+    // Handle different update types
+    if (update.message) {
+      const message = update.message;
+      const chatId = message.chat.id;
+      const userId = message.from.id;
+      const text = message.text;
+      const username = message.from.username || message.from.first_name || 'User';
 
-    const { chat, from, text, new_chat_members } = msg;
+      console.log(`Message from ${username} (${userId}) in chat ${chatId}: ${text}`);
 
-    // Handle new members
-    if (new_chat_members && new_chat_members.length > 0) {
-      for (const member of new_chat_members) {
-        if (member.is_bot) continue;
+      // Handle commands
+      if (text && text.startsWith('/')) {
+        const command = text.split(' ')[0].toLowerCase();
 
-        // Restrict new members initially
-        try {
-          await bot.restrictChatMember(chat.id, member.id, {
-            can_send_messages: false,
-            until_date: Math.floor(Date.now() / 1000) + 60 // 1 minute
-          });
-
-          await bot.sendMessage(
-            chat.id,
-            `👋 Welcome ${member.first_name}! Please wait 1 minute before sending messages.`
-          );
-        } catch (err) {
-          console.error('Failed to restrict new member:', err);
-        }
-      }
-      return res.status(200).json({ ok: true });
-    }
-
-    // Handle commands
-    if (text && text.startsWith('/')) {
-      const [command] = text.split(' ');
-
-      switch (command) {
-        case '/start':
-        case '/help':
-          try {
-            await bot.sendMessage(
-              chat.id,
-              `🛡️ DayaCID Bot - Spam Blocker\n\n` +
-              `I automatically detect and ban spammers.\n\n` +
-              `Admin commands:\n` +
-              `/ban - Ban user (reply to message)\n` +
-              `/stats - View statistics`
+        switch (command) {
+          case '/start':
+          case '/help':
+            await sendMessage(chatId,
+              '🛡️ <b>DayaCID Bot - Spam Blocker</b>\n\n' +
+              'I automatically detect and ban spammers.\n\n' +
+              'Commands:\n' +
+              '/help - Show this message\n' +
+              '/ban - Ban user (admin only, reply to message)\n' +
+              '/test - Test if bot is working'
             );
-            console.log('Help message sent to', chat.id);
-          } catch (err) {
-            console.error('Failed to send help message:', err.message);
-          }
-          break;
+            break;
 
-        case '/ban':
-          // Check if user is admin
-          try {
-            const member = await bot.getChatMember(chat.id, from.id);
-            if (member.status === 'administrator' || member.status === 'creator') {
-              if (msg.reply_to_message) {
-                const targetUser = msg.reply_to_message.from;
-                await bot.banChatMember(chat.id, targetUser.id);
-                await bot.sendMessage(chat.id, `🚫 Banned ${targetUser.first_name}`);
+          case '/test':
+            await sendMessage(chatId, '✅ Bot is working!');
+            break;
+
+          case '/ban':
+            if (await isAdmin(chatId, userId)) {
+              if (message.reply_to_message) {
+                const targetUser = message.reply_to_message.from;
+                const banResult = await banUser(chatId, targetUser.id);
+                if (banResult && banResult.ok) {
+                  await sendMessage(chatId, `🚫 Banned ${targetUser.first_name || 'user'}`);
+                } else {
+                  await sendMessage(chatId, '❌ Failed to ban user');
+                }
               } else {
-                await bot.sendMessage(chat.id, 'Reply to a message to ban user');
+                await sendMessage(chatId, 'Reply to a message to ban the user');
               }
+            } else {
+              await sendMessage(chatId, '❌ Admin only command');
             }
-          } catch (err) {
-            console.error('Ban command error:', err);
-          }
-          break;
-
-        case '/stats':
-          await bot.sendMessage(
-            chat.id,
-            `📊 Bot Statistics\n\n` +
-            `Status: ✅ Active\n` +
-            `Spam Detection: Enabled\n` +
-            `Auto-ban: Enabled`
-          );
-          break;
-      }
-
-      return res.status(200).json({ ok: true });
-    }
-
-    // Check for spam
-    if (text && from && !from.is_bot) {
-      // Skip admins
-      try {
-        const member = await bot.getChatMember(chat.id, from.id);
-        if (member.status === 'administrator' || member.status === 'creator') {
-          return res.status(200).json({ ok: true });
+            break;
         }
-      } catch (err) {
-        // Continue checking if can't get member status
+
+        return res.status(200).json({ ok: true });
       }
 
-      if (isSpam(text)) {
-        console.log(`Spam detected from ${from.id}: ${text.substring(0, 50)}`);
+      // Skip bot messages and admin messages
+      if (message.from.is_bot) {
+        return res.status(200).json({ ok: true });
+      }
 
-        try {
-          // Delete the spam message
-          await bot.deleteMessage(chat.id, msg.message_id);
+      if (await isAdmin(chatId, userId)) {
+        return res.status(200).json({ ok: true });
+      }
 
-          // Ban the spammer
-          await bot.banChatMember(chat.id, from.id);
+      // Check for spam
+      if (text && isSpam(text)) {
+        console.log(`SPAM DETECTED from ${username}`);
 
-          // Notify the group
-          await bot.sendMessage(
-            chat.id,
-            `🚫 Banned ${from.first_name || 'user'} for sending spam.`
-          );
-        } catch (err) {
-          console.error('Failed to ban spammer:', err);
+        // Delete message
+        const deleteResult = await deleteMessage(chatId, message.message_id);
+        console.log('Delete result:', deleteResult);
+
+        // Ban user
+        const banResult = await banUser(chatId, userId);
+        console.log('Ban result:', banResult);
+
+        // Notify
+        if (banResult && banResult.ok) {
+          await sendMessage(chatId, `🚫 Banned ${username} for spam`);
         }
       }
     }
@@ -189,6 +223,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true });
   } catch (error) {
     console.error('Webhook error:', error);
-    return res.status(200).json({ ok: true });
+    return res.status(200).json({ ok: true, error: error.message });
   }
 }
