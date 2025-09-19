@@ -1,38 +1,7 @@
 {
-  "github": {
-    "silent": true
-  },
   "functions": {
     "api/webhook.js": {
       "maxDuration": 10
-    },
-    "api/health.js": {
-      "maxDuration": 5
-    },
-    "api/stats.js": {
-      "maxDuration": 5
     }
-  },
-  "rewrites": [
-    {
-      "source": "/",
-      "destination": "/index.html"
-    }
-  ],
-  "headers": [
-    {
-      "source": "/api/(.*)",
-      "headers": [
-        {
-          "key": "Access-Control-Allow-Origin",
-          "value": "*"
-        },
-        {
-          "key": "Access-Control-Allow-Methods",
-          "value": "GET, POST, OPTIONS"
-        }
-      ]
-    }
-  ],
-  "regions": ["iad1"]
+  }
 }

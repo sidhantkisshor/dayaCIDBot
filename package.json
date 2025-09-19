@@ -1,31 +1,15 @@
 {
-  "name": "telegram-trading-bot",
-  "version": "1.0.0",
-  "description": "Anti-spam and anti-scam bot for Telegram trading communities",
-  "main": "index.js",
+  "name": "dayacid-bot",
+  "version": "2.0.0",
+  "description": "Telegram spam blocker bot",
   "type": "module",
   "scripts": {
-    "deploy": "vercel --prod",
-    "verify": "node scripts/verify-setup.js"
+    "deploy": "vercel --prod"
   },
-  "keywords": [
-    "telegram",
-    "bot",
-    "trading",
-    "anti-spam",
-    "moderation"
-  ],
-  "author": "",
-  "license": "MIT",
   "dependencies": {
-    "@supabase/supabase-js": "^2.39.0",
-    "@vercel/kv": "^1.0.1",
-    "node-fetch": "^3.3.2",
     "node-telegram-bot-api": "^0.64.0"
   },
-  "devDependencies": {
-    "@types/node": "^20.10.6",
-    "dotenv": "^16.3.1",
-    "vercel": "^32.7.2"
+  "engines": {
+    "node": ">=18"
   }
 }
