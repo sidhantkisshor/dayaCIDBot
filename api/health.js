@@ -1,4 +1,4 @@
-import { bot } from '../lib/bot/index.js';
+import TelegramBot from 'node-telegram-bot-api';
 import { initializeDatabase } from '../lib/database/index.js';
 
 export default async function handler(req, res) {
@@ -34,8 +34,10 @@ export default async function handler(req, res) {
             if (!process.env.TELEGRAM_BOT_TOKEN) {
                 health.bot.error = 'No bot token configured';
             } else {
+                // Create temporary bot instance for health check
+                const tempBot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN);
                 // Try to get bot info
-                const botInfo = await bot.getMe();
+                const botInfo = await tempBot.getMe();
                 if (botInfo) {
                     health.bot.connected = true;
                     health.bot.username = botInfo.username;
@@ -43,7 +45,7 @@ export default async function handler(req, res) {
                 }
 
                 // Check webhook status
-                const webhookInfo = await bot.getWebhookInfo();
+                const webhookInfo = await tempBot.getWebhookInfo();
                 if (webhookInfo && webhookInfo.url) {
                     health.bot.webhook = true;
                     health.bot.webhookUrl = webhookInfo.url;

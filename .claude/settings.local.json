@@ -10,7 +10,11 @@
       "Bash(git commit:*)",
       "Bash(git push:*)",
       "Bash(cd:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(chmod:*)",
+      "Bash(node:*)",
+      "Bash(python3:*)",
+      "WebFetch(domain:dayacidbot-3ccz7xcjf-sidhants-projects-bb2d31ab.vercel.app)"
     ],
     "deny": []
   }

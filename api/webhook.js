@@ -23,7 +23,8 @@ export default async function handler(req, res) {
   try {
     // Verify webhook secret if configured
     const secret = process.env.TELEGRAM_WEBHOOK_SECRET;
-    if (secret && !verifyWebhookSecret(req, secret)) {
+    // Only verify secret for actual Telegram webhook calls, not browser requests
+    if (secret && req.headers['x-telegram-bot-api-secret-token'] && !verifyWebhookSecret(req, secret)) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
