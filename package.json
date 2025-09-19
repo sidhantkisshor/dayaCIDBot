@@ -5,10 +5,8 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "vercel dev",
     "deploy": "vercel --prod",
-    "verify": "node scripts/verify-setup.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "verify": "node scripts/verify-setup.js"
   },
   "keywords": [
     "telegram",

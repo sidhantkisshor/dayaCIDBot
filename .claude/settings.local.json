@@ -14,7 +14,11 @@
       "Bash(chmod:*)",
       "Bash(node:*)",
       "Bash(python3:*)",
-      "WebFetch(domain:dayacidbot-3ccz7xcjf-sidhants-projects-bb2d31ab.vercel.app)"
+      "WebFetch(domain:dayacidbot-3ccz7xcjf-sidhants-projects-bb2d31ab.vercel.app)",
+      "Bash(curl:*)",
+      "WebFetch(domain:dayacidbot-82oakq1y0-sidhants-projects-bb2d31ab.vercel.app)",
+      "Bash(npm run dev:*)",
+      "Bash(vercel:*)"
     ],
     "deny": []
   }

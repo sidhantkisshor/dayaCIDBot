@@ -1,17 +1,19 @@
 {
+  "github": {
+    "silent": true
+  },
   "functions": {
     "api/webhook.js": {
       "maxDuration": 10
     },
-    "api/events.js": {
-      "maxDuration": 60
+    "api/health.js": {
+      "maxDuration": 5
+    },
+    "api/stats.js": {
+      "maxDuration": 5
     }
   },
   "rewrites": [
-    {
-      "source": "/api/telegram-webhook",
-      "destination": "/api/webhook"
-    },
     {
       "source": "/",
       "destination": "/index.html"
@@ -27,17 +29,10 @@
         },
         {
           "key": "Access-Control-Allow-Methods",
-          "value": "GET, POST, PUT, DELETE, OPTIONS"
+          "value": "GET, POST, OPTIONS"
         }
       ]
     }
   ],
-  "env": {
-    "NODE_ENV": "production"
-  },
-  "build": {
-    "env": {
-      "NODE_ENV": "production"
-    }
-  }
+  "regions": ["iad1"]
 }
