@@ -1,5 +1,10 @@
-// Simple webhook without library - just direct API calls
+// Advanced Anti-Spam Bot with comprehensive detection
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN || '7660494644:AAE1U_K5IXqGoQQ2NbrqXJkQaonRm9z2KpU';
+
+// User tracking for behavior analysis
+const userWarnings = new Map();
+const userMessageTimes = new Map();
+const trustedUsers = new Set();
 
 // Send message using Telegram API
 async function sendMessage(chatId, text) {
@@ -80,49 +85,243 @@ async function isAdmin(chatId, userId) {
   }
 }
 
-// Spam patterns
+// Comprehensive spam patterns
 const SPAM_PATTERNS = [
+  // Crypto & Trading
   /\b(free\s+crypto|airdrop|100x\s+guaranteed|pump\s+signal)/i,
   /\b(bitcoin\s+doubler|ethereum\s+giveaway|crypto\s+investment)/i,
-  /\b(t\.me\/joinchat|wa\.me|bit\.ly|tinyurl)/i,
-  /\b(guaranteed\s+profit|forex\s+signal|binary\s+option)/i,
-  /\b(make\s+\$?\d+\s+daily|earn\s+from\s+home)/i,
-  /\b(onlyfans|adult\s+content|18\+|nsfw|xxx|porn)/i,
-  /\b(verify\s+your\s+account|suspended\s+account)/i,
+  /\b(gold\s+sell|gold\s+buy|forex\s+signal|binary\s+option)/i,
+  /\b(pump\s*spin|pumpspin|claim\s+pump|pump\s+and\s+dump)/i,
+  /\b(trading\s+bot|signal\s+bot|profit\s+bot)/i,
+  /\b(nft\s+mint|nft\s+drop|free\s+nft)/i,
+  /\b(defi|yield\s+farming|liquidity\s+pool)\s+\d+%/i,
+  /\b(btc|eth|usdt|bnb)\s+giveaway/i,
+
+  // Financial Scams
+  /\b(guaranteed\s+profit|daily\s+income|passive\s+income)/i,
+  /\b(make\s+\$?\d+\s+(daily|hourly|weekly))/i,
+  /\b(earn\s+from\s+home|work\s+from\s+home\s+\$)/i,
+  /\b(loan\s+offer|instant\s+loan|quick\s+loan)/i,
+  /\b(credit\s+card\s+hack|free\s+money|cash\s+app\s+flip)/i,
+  /\b(investment\s+opportunity|roi\s+guaranteed)/i,
+
+  // Trading Indicators
+  /\b(tp|sl|take\s+profit|stop\s+loss)\s+\d+/i,
+  /\b(entry|exit)\s+@?\s*\d+/i,
+  /\b(leverage|margin)\s+\d+x/i,
+  /\b(bull\s+run|bear\s+market|to\s+the\s+moon)/i,
+
+  // Group/Channel Promotion
+  /\b(vip\s+group|premium\s+group|paid\s+group)/i,
+  /\b(join\s+my\s+channel|join\s+our\s+group)/i,
+  /\b(telegram\s+channel|whatsapp\s+group)/i,
+  /\b(add\s+you\s+for\s+free|send\s+me\s+a\s+message)/i,
+  /\b(dm\s+me|message\s+me\s+privately|inbox\s+me)/i,
+
+  // Adult Content
+  /\b(onlyfans|adult\s+content|18\+|nsfw)/i,
+  /\b(xxx|porn|sex\s+chat|cam\s+girl)/i,
+  /\b(hot\s+pics|nude|leaked\s+content)/i,
+
+  // Fake Services
+  /\b(hack\s+account|instagram\s+followers|tiktok\s+likes)/i,
+  /\b(free\s+followers|buy\s+followers|boost\s+your)/i,
+  /\b(netflix\s+account|spotify\s+premium|free\s+subscription)/i,
+  /\b(gift\s+card|redeem\s+code|promo\s+code\s+free)/i,
+
+  // Phishing
+  /\b(verify\s+your\s+account|suspended\s+account|account\s+blocked)/i,
+  /\b(click\s+here\s+immediately|urgent\s+action\s+required)/i,
+  /\b(confirm\s+your\s+identity|update\s+payment)/i,
+
+  // Suspicious URLs
+  /\b(t\.me\/joinchat|wa\.me|bit\.ly|tinyurl|short\.link)/i,
+  /\b(telegram\.me|telegra\.ph\/\w+-\d+)/i,
+  /\bhttps?:\/\/[^\s]+\.(fun|club|click|xyz|tk|ml|ga|cf|link)/i,
+
+  // Urgency Tactics
+  /\b(hurry\s+up|limited\s+time|act\s+now|don't\s+miss)/i,
+  /\b(only\s+\d+\s+spots|last\s+chance|ending\s+soon)/i,
+  /\b(register\s+now|sign\s+up\s+fast)/i,
+
+  // Repetitive Characters
+  /(.)\1{5,}/i, // Same character repeated 6+ times
+  /(\b\w+\b)(\s+\1){3,}/i, // Same word repeated 4+ times
+
+  // Phone Numbers & Contacts
+  /\+\d{10,15}/, // International phone numbers
+  /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/, // US phone format
+
+  // Emoji Spam Patterns
+  /💰{3,}|💵{3,}|💸{3,}|🤑{3,}/, // Money emojis repeated
+  /🔥{5,}|💯{5,}|🚀{5,}/, // Hype emojis repeated
 ];
 
-// Check if message is spam
-function isSpam(text) {
-  if (!text) return false;
+// Suspicious keywords that increase spam score
+const SUSPICIOUS_KEYWORDS = [
+  'profit', 'income', 'earn', 'money', 'cash', 'dollar', 'usd',
+  'guarantee', 'certified', 'proven', 'trusted', 'legit',
+  'admin', 'ceo', 'founder', 'expert', 'guru',
+  'winner', 'selected', 'chosen', 'congratulations',
+  'double', 'triple', '10x', '100x', '1000x',
+  'free', 'giveaway', 'bonus', 'reward', 'prize',
+  'limited', 'exclusive', 'special', 'premium', 'vip',
+  'click', 'join', 'register', 'signup', 'subscribe',
+  'hack', 'leaked', 'cracked', 'bypass', 'unlimited'
+];
+
+// Check user behavior patterns
+function analyzeUserBehavior(userId, chatId) {
+  const now = Date.now();
+  const userKey = `${chatId}_${userId}`;
+
+  // Check message frequency (flood detection)
+  if (!userMessageTimes.has(userKey)) {
+    userMessageTimes.set(userKey, []);
+  }
+
+  const messageTimes = userMessageTimes.get(userKey);
+  messageTimes.push(now);
+
+  // Keep only messages from last 60 seconds
+  const recentMessages = messageTimes.filter(time => now - time < 60000);
+  userMessageTimes.set(userKey, recentMessages);
+
+  // Check for flooding
+  if (recentMessages.length > 5) { // More than 5 messages per minute
+    return { isFlooding: true, messageCount: recentMessages.length };
+  }
+
+  // Check for burst messaging (3+ messages in 5 seconds)
+  const burst = messageTimes.filter(time => now - time < 5000);
+  if (burst.length >= 3) {
+    return { isBursting: true, burstCount: burst.length };
+  }
+
+  return { isFlooding: false, isBursting: false };
+}
+
+// Advanced spam detection
+function isSpam(text, userId, chatId, username) {
+  if (!text) return { isSpam: false, score: 0, reasons: [] };
 
   let score = 0;
+  const reasons = [];
 
-  // Check patterns
+  // Skip trusted users
+  if (trustedUsers.has(`${chatId}_${userId}`)) {
+    return { isSpam: false, score: 0, reasons: ['Trusted user'] };
+  }
+
+  // Check behavior patterns
+  const behavior = analyzeUserBehavior(userId, chatId);
+  if (behavior.isFlooding) {
+    score += 5;
+    reasons.push(`Flooding: ${behavior.messageCount} msgs/min`);
+  }
+  if (behavior.isBursting) {
+    score += 3;
+    reasons.push(`Burst messaging: ${behavior.burstCount} msgs/5s`);
+  }
+
+  // Check spam patterns
+  let patternMatches = 0;
   for (const pattern of SPAM_PATTERNS) {
     if (pattern.test(text)) {
       score += 3;
-      console.log('Pattern matched:', pattern);
+      patternMatches++;
+      reasons.push(`Pattern: ${pattern.source.substring(0, 30)}...`);
     }
   }
 
-  // Check excessive caps
+  // Multiple pattern matches indicate higher spam probability
+  if (patternMatches >= 3) {
+    score += 5;
+    reasons.push('Multiple spam patterns detected');
+  }
+
+  // Check suspicious keywords
+  const lowerText = text.toLowerCase();
+  let keywordCount = 0;
+  for (const keyword of SUSPICIOUS_KEYWORDS) {
+    if (lowerText.includes(keyword)) {
+      keywordCount++;
+    }
+  }
+  if (keywordCount >= 3) {
+    score += 2;
+    reasons.push(`${keywordCount} suspicious keywords`);
+  }
+  if (keywordCount >= 5) {
+    score += 3;
+    reasons.push('High concentration of spam keywords');
+  }
+
+  // Check excessive caps (more than 70% capitals)
   if (text.length > 10) {
     const capsRatio = (text.match(/[A-Z]/g) || []).length / text.length;
     if (capsRatio > 0.7) {
       score += 2;
-      console.log('Excessive caps detected');
+      reasons.push('Excessive capitals');
     }
   }
 
   // Check excessive emojis
-  const emojiCount = (text.match(/[\u{1F300}-\u{1F9FF}]/gu) || []).length;
+  const emojiCount = (text.match(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu) || []).length;
   if (emojiCount > 5) {
+    score += 1;
+    reasons.push(`${emojiCount} emojis`);
+  }
+  if (emojiCount > 10) {
     score += 2;
-    console.log('Excessive emojis detected');
+    reasons.push('Excessive emoji usage');
   }
 
-  console.log('Spam score:', score);
-  return score >= 5;
+  // Check for multiple URLs
+  const urlCount = (text.match(/https?:\/\/[^\s]+/gi) || []).length;
+  if (urlCount > 2) {
+    score += 2;
+    reasons.push(`${urlCount} URLs detected`);
+  }
+
+  // Check message length (very short messages with URLs are suspicious)
+  if (text.length < 50 && urlCount > 0) {
+    score += 2;
+    reasons.push('Short message with URL');
+  }
+
+  // New user posting URLs immediately
+  if (!username && urlCount > 0) {
+    score += 3;
+    reasons.push('No username + URL');
+  }
+
+  // Check for number sequences (phone numbers, codes)
+  const numberSequences = text.match(/\d{6,}/g) || [];
+  if (numberSequences.length > 0) {
+    score += 1;
+    reasons.push('Long number sequences');
+  }
+
+  // Check for repeated exclamation marks or question marks
+  if (/[!?]{3,}/.test(text)) {
+    score += 1;
+    reasons.push('Excessive punctuation');
+  }
+
+  // Forward detection (messages that start with "Forwarded from")
+  if (text.includes('Forwarded from')) {
+    score += 1;
+    reasons.push('Forwarded message');
+  }
+
+  console.log(`Spam analysis for ${username || 'Unknown'}: Score=${score}, Reasons=${reasons.join(', ')}`);
+
+  return {
+    isSpam: score >= 5,
+    score: score,
+    reasons: reasons
+  };
 }
 
 // Main webhook handler
@@ -144,30 +343,39 @@ export default async function handler(req, res) {
       const message = update.message;
       const chatId = message.chat.id;
       const userId = message.from.id;
-      const text = message.text;
+      const text = message.text || message.caption || '';
       const username = message.from.username || message.from.first_name || 'User';
+      const userKey = `${chatId}_${userId}`;
 
       console.log(`Message from ${username} (${userId}) in chat ${chatId}: ${text}`);
 
       // Handle commands
       if (text && text.startsWith('/')) {
-        const command = text.split(' ')[0].toLowerCase();
+        const [command, ...args] = text.split(' ');
+        const lowerCommand = command.toLowerCase();
 
-        switch (command) {
+        switch (lowerCommand) {
           case '/start':
           case '/help':
             await sendMessage(chatId,
-              '🛡️ <b>DayaCID Bot - Spam Blocker</b>\n\n' +
-              'I automatically detect and ban spammers.\n\n' +
+              '🛡️ <b>Advanced Anti-Spam Bot</b>\n\n' +
+              'I automatically detect and remove spam with:\n' +
+              '• Pattern matching\n' +
+              '• Behavior analysis\n' +
+              '• Keyword detection\n' +
+              '• Flood protection\n\n' +
               'Commands:\n' +
               '/help - Show this message\n' +
-              '/ban - Ban user (admin only, reply to message)\n' +
-              '/test - Test if bot is working'
+              '/ban @user - Ban user (admin only)\n' +
+              '/trust @user - Trust user (admin only)\n' +
+              '/untrust @user - Remove trust (admin only)\n' +
+              '/stats - Show spam statistics\n' +
+              '/test - Test bot status'
             );
             break;
 
           case '/test':
-            await sendMessage(chatId, '✅ Bot is working!');
+            await sendMessage(chatId, '✅ Bot is working and protecting your chat!');
             break;
 
           case '/ban':
@@ -180,12 +388,55 @@ export default async function handler(req, res) {
                 } else {
                   await sendMessage(chatId, '❌ Failed to ban user');
                 }
+              } else if (args[0]) {
+                await sendMessage(chatId, 'Please reply to a message from the user you want to ban');
               } else {
-                await sendMessage(chatId, 'Reply to a message to ban the user');
+                await sendMessage(chatId, 'Usage: /ban @username or reply to a message');
               }
             } else {
               await sendMessage(chatId, '❌ Admin only command');
             }
+            break;
+
+          case '/trust':
+            if (await isAdmin(chatId, userId)) {
+              if (message.reply_to_message) {
+                const targetUser = message.reply_to_message.from;
+                const targetKey = `${chatId}_${targetUser.id}`;
+                trustedUsers.add(targetKey);
+                await sendMessage(chatId, `✅ ${targetUser.first_name || 'User'} is now trusted`);
+              } else {
+                await sendMessage(chatId, 'Reply to a message from the user you want to trust');
+              }
+            } else {
+              await sendMessage(chatId, '❌ Admin only command');
+            }
+            break;
+
+          case '/untrust':
+            if (await isAdmin(chatId, userId)) {
+              if (message.reply_to_message) {
+                const targetUser = message.reply_to_message.from;
+                const targetKey = `${chatId}_${targetUser.id}`;
+                trustedUsers.delete(targetKey);
+                await sendMessage(chatId, `⚠️ ${targetUser.first_name || 'User'} is no longer trusted`);
+              } else {
+                await sendMessage(chatId, 'Reply to a message from the user you want to untrust');
+              }
+            } else {
+              await sendMessage(chatId, '❌ Admin only command');
+            }
+            break;
+
+          case '/stats':
+            const warningCount = userWarnings.size;
+            const trustedCount = trustedUsers.size;
+            await sendMessage(chatId,
+              `📊 <b>Bot Statistics</b>\n\n` +
+              `⚠️ Users with warnings: ${warningCount}\n` +
+              `✅ Trusted users: ${trustedCount}\n` +
+              `🛡️ Protection: Active`
+            );
             break;
         }
 
@@ -202,20 +453,48 @@ export default async function handler(req, res) {
       }
 
       // Check for spam
-      if (text && isSpam(text)) {
-        console.log(`SPAM DETECTED from ${username}`);
+      const spamCheck = isSpam(text, userId, chatId, username);
+
+      if (spamCheck.isSpam) {
+        console.log(`SPAM DETECTED from ${username}: Score=${spamCheck.score}, Reasons=${spamCheck.reasons.join(', ')}`);
 
         // Delete message
         const deleteResult = await deleteMessage(chatId, message.message_id);
         console.log('Delete result:', deleteResult);
 
-        // Ban user
-        const banResult = await banUser(chatId, userId);
-        console.log('Ban result:', banResult);
+        // Check warning count
+        const warnings = (userWarnings.get(userKey) || 0) + 1;
+        userWarnings.set(userKey, warnings);
 
-        // Notify
-        if (banResult && banResult.ok) {
-          await sendMessage(chatId, `🚫 Banned ${username} for spam`);
+        if (warnings >= 3) {
+          // Ban after 3 warnings
+          const banResult = await banUser(chatId, userId);
+          console.log('Ban result:', banResult);
+
+          if (banResult && banResult.ok) {
+            await sendMessage(chatId,
+              `🚫 <b>Banned ${username}</b>\n` +
+              `Reason: Multiple spam violations\n` +
+              `Score: ${spamCheck.score}`
+            );
+          }
+          userWarnings.delete(userKey);
+        } else {
+          // Warning message
+          await sendMessage(chatId,
+            `⚠️ <b>Spam detected from ${username}</b>\n` +
+            `Warning: ${warnings}/3\n` +
+            `Violations: ${spamCheck.reasons.slice(0, 3).join(', ')}`
+          );
+        }
+      }
+
+      // Check for media spam (photos, videos with suspicious captions)
+      if ((message.photo || message.video || message.document) && message.caption) {
+        const captionCheck = isSpam(message.caption, userId, chatId, username);
+        if (captionCheck.isSpam) {
+          await deleteMessage(chatId, message.message_id);
+          await sendMessage(chatId, `🚫 Media spam detected from ${username}`);
         }
       }
     }
