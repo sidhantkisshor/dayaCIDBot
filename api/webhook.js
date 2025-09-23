@@ -6,8 +6,8 @@ const userWarnings = new Map();
 const userMessageTimes = new Map();
 const trustedUsers = new Set();
 
-// Send message using Telegram API
-async function sendMessage(chatId, text) {
+// Send message using Telegram API with auto-delete option
+async function sendMessage(chatId, text, autoDelete = false) {
   try {
     const response = await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
       method: 'POST',
@@ -20,6 +20,19 @@ async function sendMessage(chatId, text) {
     });
     const result = await response.json();
     console.log('Send message result:', result);
+
+    // Auto-delete bot message after 60 seconds
+    if (autoDelete && result.ok && result.result.message_id) {
+      setTimeout(async () => {
+        try {
+          await deleteMessage(chatId, result.result.message_id);
+          console.log('Auto-deleted bot message after 60s');
+        } catch (err) {
+          console.error('Failed to auto-delete message:', err);
+        }
+      }, 60000); // 60 seconds
+    }
+
     return result;
   } catch (error) {
     console.error('Failed to send message:', error);
@@ -512,29 +525,31 @@ export default async function handler(req, res) {
         const deleteResult = await deleteMessage(chatId, message.message_id);
         console.log('Delete result:', deleteResult);
 
-        // Check warning count
+        // Check warning count (1 warning system)
         const warnings = (userWarnings.get(userKey) || 0) + 1;
         userWarnings.set(userKey, warnings);
 
-        if (warnings >= 3) {
-          // Ban after 3 warnings
+        if (warnings >= 2) {
+          // Ban after 1 warning (2nd offense)
           const banResult = await banUser(chatId, userId);
           console.log('Ban result:', banResult);
 
           if (banResult && banResult.ok) {
             await sendMessage(chatId,
               `🚫 <b>Banned ${username}</b>\n` +
-              `Reason: Multiple spam violations\n` +
-              `Score: ${spamCheck.score}`
+              `Reason: Repeated spam violation\n` +
+              `Score: ${spamCheck.score}`,
+              true // Auto-delete after 60 seconds
             );
           }
           userWarnings.delete(userKey);
         } else {
-          // Warning message
+          // First warning message
           await sendMessage(chatId,
             `⚠️ <b>Spam detected from ${username}</b>\n` +
-            `Warning: ${warnings}/3\n` +
-            `Violations: ${spamCheck.reasons.slice(0, 3).join(', ')}`
+            `<i>Next violation = permanent ban</i>\n` +
+            `Violations: ${spamCheck.reasons.slice(0, 3).join(', ')}`,
+            true // Auto-delete after 60 seconds
           );
         }
       }
@@ -544,7 +559,7 @@ export default async function handler(req, res) {
         const captionCheck = isSpam(message.caption, userId, chatId, username);
         if (captionCheck.isSpam) {
           await deleteMessage(chatId, message.message_id);
-          await sendMessage(chatId, `🚫 Media spam detected from ${username}`);
+          await sendMessage(chatId, `🚫 Media spam detected from ${username}`, true); // Auto-delete after 60 seconds
         }
       }
     }
