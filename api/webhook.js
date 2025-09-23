@@ -148,6 +148,11 @@ const SPAM_PATTERNS = [
   /(.)\1{5,}/i, // Same character repeated 6+ times
   /(\b\w+\b)(\s+\1){3,}/i, // Same word repeated 4+ times
 
+  // Repetitive mentions/usernames
+  /(@\w+[\s\n]*){3,}/i, // Multiple @mentions repeated 3+ times
+  /(@trading_|@forex_|@signal_|@crypto_|@gold_|@invest_|@profit_)/i, // Suspicious trading usernames
+  /(@\w+_master|@\w+_expert|@\w+_guru|@\w+_pro)/i, // Suspicious "expert" usernames
+
   // Phone Numbers & Contacts
   /\+\d{10,15}/, // International phone numbers
   /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/, // US phone format
@@ -313,6 +318,28 @@ function isSpam(text, userId, chatId, username) {
   if (text.includes('Forwarded from')) {
     score += 1;
     reasons.push('Forwarded message');
+  }
+
+  // Check for repeated username mentions (exact same username multiple times)
+  const mentionMatches = text.match(/@\w+/g) || [];
+  if (mentionMatches.length >= 3) {
+    const uniqueMentions = new Set(mentionMatches);
+    if (uniqueMentions.size === 1) {
+      // Same username repeated multiple times
+      score += 5;
+      reasons.push(`Username spamming: ${mentionMatches[0]} x${mentionMatches.length}`);
+    } else if (mentionMatches.length >= 5) {
+      // Multiple different mentions (still spam)
+      score += 3;
+      reasons.push(`Excessive mentions: ${mentionMatches.length}`);
+    }
+  }
+
+  // Check if message is ONLY username mentions (no other content)
+  const textWithoutMentions = text.replace(/@\w+/g, '').trim();
+  if (mentionMatches.length > 0 && textWithoutMentions.length < 5) {
+    score += 3;
+    reasons.push('Message contains only mentions');
   }
 
   console.log(`Spam analysis for ${username || 'Unknown'}: Score=${score}, Reasons=${reasons.join(', ')}`);
