@@ -97,6 +97,12 @@ const SPAM_PATTERNS = [
   /\b(defi|yield\s+farming|liquidity\s+pool)\s+\d+%/i,
   /\b(btc|eth|usdt|bnb)\s+giveaway/i,
 
+  // Forex/Commodity Trading Symbols
+  /\b(XAUUSD|XAGUSD|EURUSD|GBPUSD|USDJPY|USDCAD|AUDUSD|NZDUSD)/i,
+  /\b(EUR\/USD|GBP\/USD|USD\/JPY|USD\/CAD|AUD\/USD|NZD\/USD)/i,
+  /\b(gold|silver|oil|crude)\s+(buy|sell|short|long)/i,
+  /\b(buy|sell|short|long)\s+\d{3,5}/i, // Buy/Sell with price levels
+
   // Financial Scams
   /\b(guaranteed\s+profit|daily\s+income|passive\s+income)/i,
   /\b(make\s+\$?\d+\s+(daily|hourly|weekly))/i,
@@ -107,9 +113,12 @@ const SPAM_PATTERNS = [
 
   // Trading Indicators
   /\b(tp|sl|take\s+profit|stop\s+loss)\s+\d+/i,
+  /✔️\s*(tp|sl)\s+\d+/i, // TP/SL with checkmarks
+  /🚫\s*(stop|sl)\s+\d+/i, // Stop with emoji
   /\b(entry|exit)\s+@?\s*\d+/i,
   /\b(leverage|margin)\s+\d+x/i,
   /\b(bull\s+run|bear\s+market|to\s+the\s+moon)/i,
+  /\bnew\s+(buy|sell|long|short)/i, // "New Buy", "New Sell" etc.
 
   // Group/Channel Promotion
   /\b(vip\s+group|premium\s+group|paid\s+group)/i,
@@ -260,6 +269,20 @@ function isSpam(text, userId, chatId, username) {
   if (keywordCount >= 5) {
     score += 3;
     reasons.push('High concentration of spam keywords');
+  }
+
+  // Check for trading signal patterns with multiple price levels
+  const priceMatches = text.match(/\d{3,5}/g) || [];
+  if (priceMatches.length >= 3) {
+    // Multiple price levels (likely TP/SL levels)
+    score += 4;
+    reasons.push(`Multiple price levels: ${priceMatches.length}`);
+  }
+
+  // Check for trading emojis combined with numbers
+  if (/[✔️📊🚫💹📈📉]\s*\d{3,5}/i.test(text) || /\d{3,5}\s*[✔️📊🚫💹📈📉]/i.test(text)) {
+    score += 3;
+    reasons.push('Trading emojis with prices');
   }
 
   // Check excessive caps (more than 70% capitals)
