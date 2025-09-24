@@ -457,32 +457,66 @@ export default async function handler(req, res) {
             return res.status(200).json({ ok: true });
           }
 
-          // Analyze the reported message for spam
-          const spamCheck = isSpam(reportedText, reportedUserId, chatId, reportedUsername);
+          // Analyze the reported message for spam WITH EXTRA WEIGHT for user report
+          let spamCheck = isSpam(reportedText, reportedUserId, chatId, reportedUsername);
 
-          if (spamCheck.isSpam || spamCheck.score >= 3) {
+          // Add extra weight since a user reported it
+          const reportBonus = 3; // User reports add significant weight
+          spamCheck.score += reportBonus;
+          spamCheck.reasons.push(`User reported (+${reportBonus})`);
+
+          console.log(`User report: ${username} reported ${reportedUsername}. Adjusted score: ${spamCheck.score}`);
+
+          // Only take action if the combined score is significant
+          if (spamCheck.score >= 5) {
             // Delete the reported spam message
             await deleteMessage(chatId, reportedMessage.message_id);
 
-            // Ban the spammer
-            const banResult = await banUser(chatId, reportedUserId);
-            if (banResult && banResult.ok) {
-              await sendMessage(chatId,
-                `🚫 <b>Tod diya isko! ${reportedUsername}</b>\n` +
-                `<i>Reported by ${username}</i>`,
-                true
-              );
+            // Check if it's severe enough for a ban (score >= 8 with user report)
+            if (spamCheck.score >= 8) {
+              // Ban the spammer
+              const banResult = await banUser(chatId, reportedUserId);
+              if (banResult && banResult.ok) {
+                await sendMessage(chatId,
+                  `🚫 <b>Tod diya isko! ${reportedUsername}</b>\n` +
+                  `<i>Reported by ${username}</i>`,
+                  true
+                );
+              }
+            } else {
+              // Just warn for moderate spam
+              const reportedUserKey = `${chatId}_${reportedUserId}`;
+              const warnings = (userWarnings.get(reportedUserKey) || 0) + 1;
+              userWarnings.set(reportedUserKey, warnings);
+
+              if (warnings >= 2) {
+                // Ban on second offense
+                const banResult = await banUser(chatId, reportedUserId);
+                if (banResult && banResult.ok) {
+                  await sendMessage(chatId,
+                    `🚫 <b>Tod diya isko! ${reportedUsername}</b>\n` +
+                    `<i>Multiple violations</i>`,
+                    true
+                  );
+                }
+                userWarnings.delete(reportedUserKey);
+              } else {
+                await sendMessage(chatId,
+                  `⚠️ <b>${reportedUsername}</b> - Last warning!\n` +
+                  `<i>Reported by ${username}</i>`,
+                  true
+                );
+              }
             }
           } else {
-            // If not clearly spam, still delete if user is reporting
-            await deleteMessage(chatId, reportedMessage.message_id);
+            // Not enough evidence even with user report
             await sendMessage(chatId,
-              `🗑️ Message removed as requested by ${username}`,
+              `📋 Report noted. Monitoring ${reportedUsername}`,
               true
             );
           }
 
-          // Delete the reporting message too to keep chat clean
+          // Delete the reporting message to keep chat clean
           await deleteMessage(chatId, message.message_id);
 
           return res.status(200).json({ ok: true });
