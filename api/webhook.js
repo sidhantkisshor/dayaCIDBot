@@ -160,6 +160,8 @@ const SPAM_PATTERNS = [
   /\b(t\.me\/joinchat|wa\.me|bit\.ly|tinyurl|short\.link)/i,
   /\b(telegram\.me|telegra\.ph\/\w+-\d+)/i,
   /\bhttps?:\/\/[^\s]+\.(fun|club|click|xyz|tk|ml|ga|cf|link)/i,
+  /\bt\.me\/[a-zA-Z0-9_]+/i, // Any Telegram group/channel link
+  /\bhttps?:\/\/t\.me\/[a-zA-Z0-9_]+/i, // Full Telegram URLs
 
   // Urgency Tactics
   /\b(hurry\s+up|limited\s+time|act\s+now|don't\s+miss)/i,
@@ -536,9 +538,7 @@ export default async function handler(req, res) {
 
           if (banResult && banResult.ok) {
             await sendMessage(chatId,
-              `🚫 <b>Banned ${username}</b>\n` +
-              `Reason: Repeated spam violation\n` +
-              `Score: ${spamCheck.score}`,
+              `🚫 <b>Tod diya isko! ${username}</b>`,
               true // Auto-delete after 60 seconds
             );
           }
@@ -546,9 +546,7 @@ export default async function handler(req, res) {
         } else {
           // First warning message
           await sendMessage(chatId,
-            `⚠️ <b>Spam detected from ${username}</b>\n` +
-            `<i>Next violation = permanent ban</i>\n` +
-            `Violations: ${spamCheck.reasons.slice(0, 3).join(', ')}`,
+            `⚠️ <b>${username}</b> - Last warning!`,
             true // Auto-delete after 60 seconds
           );
         }
