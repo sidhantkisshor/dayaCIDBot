@@ -438,6 +438,57 @@ export default async function handler(req, res) {
         console.log('Message is forwarded');
       }
 
+      // Check if bot is mentioned with a reply (user reporting spam)
+      if (text && (text.includes('@DayaCIDbot') || text.includes('@dayacidbot'))) {
+        console.log('Bot mentioned by user');
+
+        // Check if this is a reply to another message
+        if (message.reply_to_message) {
+          const reportedMessage = message.reply_to_message;
+          const reportedUserId = reportedMessage.from.id;
+          const reportedUsername = reportedMessage.from.username || reportedMessage.from.first_name || 'User';
+          const reportedText = reportedMessage.text || reportedMessage.caption || '';
+
+          console.log(`User ${username} reported message from ${reportedUsername}: ${reportedText}`);
+
+          // Don't process if reported user is admin or bot
+          if (reportedMessage.from.is_bot || await isAdmin(chatId, reportedUserId)) {
+            await sendMessage(chatId, `⚠️ Cannot take action on this user`, true);
+            return res.status(200).json({ ok: true });
+          }
+
+          // Analyze the reported message for spam
+          const spamCheck = isSpam(reportedText, reportedUserId, chatId, reportedUsername);
+
+          if (spamCheck.isSpam || spamCheck.score >= 3) {
+            // Delete the reported spam message
+            await deleteMessage(chatId, reportedMessage.message_id);
+
+            // Ban the spammer
+            const banResult = await banUser(chatId, reportedUserId);
+            if (banResult && banResult.ok) {
+              await sendMessage(chatId,
+                `🚫 <b>Tod diya isko! ${reportedUsername}</b>\n` +
+                `<i>Reported by ${username}</i>`,
+                true
+              );
+            }
+          } else {
+            // If not clearly spam, still delete if user is reporting
+            await deleteMessage(chatId, reportedMessage.message_id);
+            await sendMessage(chatId,
+              `🗑️ Message removed as requested by ${username}`,
+              true
+            );
+          }
+
+          // Delete the reporting message too to keep chat clean
+          await deleteMessage(chatId, message.message_id);
+
+          return res.status(200).json({ ok: true });
+        }
+      }
+
       // Handle commands
       if (text && text.startsWith('/')) {
         const [command, ...args] = text.split(' ');
@@ -459,7 +510,8 @@ export default async function handler(req, res) {
               '/trust @user - Trust user (admin only)\n' +
               '/untrust @user - Remove trust (admin only)\n' +
               '/stats - Show spam statistics\n' +
-              '/test - Test bot status'
+              '/test - Test bot status\n\n' +
+              '💡 <b>Report spam:</b> Reply to any message and tag @DayaCIDbot'
             );
             break;
 
