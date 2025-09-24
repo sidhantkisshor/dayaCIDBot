@@ -184,6 +184,12 @@ const SPAM_PATTERNS = [
   // Emoji Spam Patterns
   /💰{3,}|💵{3,}|💸{3,}|🤑{3,}/, // Money emojis repeated
   /🔥{5,}|💯{5,}|🚀{5,}/, // Hype emojis repeated
+
+  // Quote/Copy patterns
+  /^(RT|Repost|Via|From)[\s:]/i, // Starts with repost indicators
+  /[\[\]]{2,}/, // Multiple brackets (often in quotes)
+  /^["'"].*["'"]$/s, // Entire message in quotes
+  /^\d+\.\s+.*\n\d+\.\s+/m, // Numbered list format (often copy-paste)
 ];
 
 // Suspicious keywords that increase spam score
@@ -333,6 +339,20 @@ function isSpam(text, userId, chatId, username) {
     reasons.push('Short message with URL');
   }
 
+  // Check for copy-pasted long articles/quotes (suspiciously long messages)
+  if (text.length > 1000) {
+    score += 2;
+    reasons.push('Very long message (possible copy-paste)');
+
+    // Extra penalty if it looks like financial/trading content
+    const financeWordCount = ['market', 'finance', 'investment', 'capital', 'equity', 'trading', 'portfolio', 'leverage']
+      .filter(word => text.toLowerCase().includes(word)).length;
+    if (financeWordCount >= 3) {
+      score += 3;
+      reasons.push('Long financial article');
+    }
+  }
+
   // New user posting URLs immediately
   if (!username && urlCount > 0) {
     score += 3;
@@ -411,8 +431,12 @@ export default async function handler(req, res) {
       const text = message.text || message.caption || '';
       const username = message.from.username || message.from.first_name || 'User';
       const userKey = `${chatId}_${userId}`;
+      const isForwarded = message.forward_from || message.forward_from_chat || message.forward_date;
 
       console.log(`Message from ${username} (${userId}) in chat ${chatId}: ${text}`);
+      if (isForwarded) {
+        console.log('Message is forwarded');
+      }
 
       // Handle commands
       if (text && text.startsWith('/')) {
@@ -515,6 +539,26 @@ export default async function handler(req, res) {
 
       if (await isAdmin(chatId, userId)) {
         return res.status(200).json({ ok: true });
+      }
+
+      // Check for forwarded messages without context
+      if (isForwarded && !text.includes('@' + username)) {
+        // Forwarded message from another source
+        const behavior = analyzeUserBehavior(userId, chatId);
+
+        // If user is flooding with forwards or it looks like spam content
+        if (behavior.isFlooding || behavior.isBursting ||
+            (text && (text.match(/https?:\/\/[^\s]+/gi) || []).length > 0)) {
+          console.log(`Suspicious forward from ${username}`);
+
+          // Delete forwarded spam
+          await deleteMessage(chatId, message.message_id);
+          await sendMessage(chatId,
+            `⚠️ <b>${username}</b> - No forwarding spam!`,
+            true
+          );
+          return res.status(200).json({ ok: true });
+        }
       }
 
       // Check for spam
