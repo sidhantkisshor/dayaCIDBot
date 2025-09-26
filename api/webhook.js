@@ -98,7 +98,7 @@ async function isAdmin(chatId, userId) {
   }
 }
 
-// Comprehensive spam patterns
+// Comprehensive spam patterns - ENHANCED FOR STRICTER DETECTION
 const SPAM_PATTERNS = [
   // Crypto & Trading
   /\b(free\s+crypto|airdrop|100x\s+guaranteed|pump\s+signal)/i,
@@ -106,6 +106,8 @@ const SPAM_PATTERNS = [
   /\b(gold\s+sell|gold\s+buy|forex\s+signal|binary\s+option)/i,
   /\b(pump\s*spin|pumpspin|claim\s+pump|pump\s+and\s+dump)/i,
   /\b(trading\s+bot|signal\s+bot|profit\s+bot)/i,
+  /\b(signal|signals)\s+(group|channel|free|vip|premium)/i, // Generic signal spam
+  /\b(join\s+us|join\s+now|join\s+here)/i, // Join solicitations
   /\b(nft\s+mint|nft\s+drop|free\s+nft)/i,
   /\b(defi|yield\s+farming|liquidity\s+pool)\s+\d+%/i,
   /\b(btc|eth|usdt|bnb)\s+giveaway/i,
@@ -190,6 +192,13 @@ const SPAM_PATTERNS = [
   /[\[\]]{2,}/, // Multiple brackets (often in quotes)
   /^["'"].*["'"]$/s, // Entire message in quotes
   /^\d+\.\s+.*\n\d+\.\s+/m, // Numbered list format (often copy-paste)
+
+  // Additional aggressive patterns
+  /\b(whatsapp|telegram|wa)\s+(group|channel)/i, // Messaging platform spam
+  /\b(contact|message|dm|inbox)\s+(me|us|admin)/i, // Contact solicitation
+  /\b\w+@\w+\.(com|net|org)/i, // Email addresses (often spam)
+  /\bcall\s+now|call\s+me|call\s+us/i, // Call to action spam
+  /\b(opportunity|opportunities)\s+(for|to|in)/i, // Generic opportunity spam
 ];
 
 // Suspicious keywords that increase spam score
@@ -222,14 +231,14 @@ function analyzeUserBehavior(userId, chatId) {
   const recentMessages = messageTimes.filter(time => now - time < 60000);
   userMessageTimes.set(userKey, recentMessages);
 
-  // Check for flooding
-  if (recentMessages.length > 5) { // More than 5 messages per minute
+  // Check for flooding - STRICTER LIMITS
+  if (recentMessages.length > 4) { // Reduced from 5 to 4 messages per minute
     return { isFlooding: true, messageCount: recentMessages.length };
   }
 
-  // Check for burst messaging (3+ messages in 5 seconds)
-  const burst = messageTimes.filter(time => now - time < 5000);
-  if (burst.length >= 3) {
+  // Check for burst messaging (2+ messages in 3 seconds) - STRICTER
+  const burst = messageTimes.filter(time => now - time < 3000); // Reduced from 5000ms to 3000ms
+  if (burst.length >= 2) { // Reduced from 3 to 2
     return { isBursting: true, burstCount: burst.length };
   }
 
@@ -248,34 +257,38 @@ function isSpam(text, userId, chatId, username) {
     return { isSpam: false, score: 0, reasons: ['Trusted user'] };
   }
 
-  // Check behavior patterns
+  // Check behavior patterns - STRICTER PENALTIES
   const behavior = analyzeUserBehavior(userId, chatId);
   if (behavior.isFlooding) {
-    score += 5;
+    score += 6; // Increased from 5
     reasons.push(`Flooding: ${behavior.messageCount} msgs/min`);
   }
   if (behavior.isBursting) {
-    score += 3;
-    reasons.push(`Burst messaging: ${behavior.burstCount} msgs/5s`);
+    score += 4; // Increased from 3
+    reasons.push(`Burst messaging: ${behavior.burstCount} msgs/3s`);
   }
 
-  // Check spam patterns
+  // Check spam patterns - INCREASED SCORES FOR STRICTER DETECTION
   let patternMatches = 0;
   for (const pattern of SPAM_PATTERNS) {
     if (pattern.test(text)) {
-      score += 3;
+      score += 4; // Increased from 3
       patternMatches++;
       reasons.push(`Pattern: ${pattern.source.substring(0, 30)}...`);
     }
   }
 
   // Multiple pattern matches indicate higher spam probability
-  if (patternMatches >= 3) {
+  if (patternMatches >= 2) { // Reduced from 3 to 2 for stricter detection
     score += 5;
     reasons.push('Multiple spam patterns detected');
   }
+  if (patternMatches >= 3) {
+    score += 3; // Additional penalty for 3+ patterns
+    reasons.push('High spam pattern concentration');
+  }
 
-  // Check suspicious keywords
+  // Check suspicious keywords - STRICTER SCORING
   const lowerText = text.toLowerCase();
   let keywordCount = 0;
   for (const keyword of SUSPICIOUS_KEYWORDS) {
@@ -283,12 +296,12 @@ function isSpam(text, userId, chatId, username) {
       keywordCount++;
     }
   }
-  if (keywordCount >= 3) {
-    score += 2;
+  if (keywordCount >= 2) { // Reduced from 3
+    score += 3; // Increased from 2
     reasons.push(`${keywordCount} suspicious keywords`);
   }
-  if (keywordCount >= 5) {
-    score += 3;
+  if (keywordCount >= 4) { // Reduced from 5
+    score += 4; // Increased from 3
     reasons.push('High concentration of spam keywords');
   }
 
@@ -403,7 +416,7 @@ function isSpam(text, userId, chatId, username) {
   console.log(`Spam analysis for ${username || 'Unknown'}: Score=${score}, Reasons=${reasons.join(', ')}`);
 
   return {
-    isSpam: score >= 5,
+    isSpam: score >= 4, // LOWERED THRESHOLD from 5 to 4 for stricter detection
     score: score,
     reasons: reasons
   };
