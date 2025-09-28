@@ -107,7 +107,6 @@ const SPAM_PATTERNS = [
   /\b(pump\s*spin|pumpspin|claim\s+pump|pump\s+and\s+dump)/i,
   /\b(trading\s+bot|signal\s+bot|profit\s+bot)/i,
   /\b(signal|signals)\s+(group|channel|free|vip|premium)/i, // Generic signal spam
-  /\b(join\s+us|join\s+now|join\s+here)/i, // Join solicitations
   /\b(nft\s+mint|nft\s+drop|free\s+nft)/i,
   /\b(defi|yield\s+farming|liquidity\s+pool)\s+\d+%/i,
   /\b(btc|eth|usdt|bnb)\s+giveaway/i,
@@ -193,12 +192,9 @@ const SPAM_PATTERNS = [
   /^["'"].*["'"]$/s, // Entire message in quotes
   /^\d+\.\s+.*\n\d+\.\s+/m, // Numbered list format (often copy-paste)
 
-  // Additional aggressive patterns
-  /\b(whatsapp|telegram|wa)\s+(group|channel)/i, // Messaging platform spam
-  /\b(contact|message|dm|inbox)\s+(me|us|admin)/i, // Contact solicitation
-  /\b\w+@\w+\.(com|net|org)/i, // Email addresses (often spam)
-  /\bcall\s+now|call\s+me|call\s+us/i, // Call to action spam
-  /\b(opportunity|opportunities)\s+(for|to|in)/i, // Generic opportunity spam
+  // Additional patterns (more targeted to avoid false positives)
+  /\b(contact|dm|inbox)\s+(me|us)\s+for\s+(signal|profit|earning)/i, // Specific contact spam
+  /\bcall\s+\+?\d{10,}/i, // Call with phone number
 ];
 
 // Suspicious keywords that increase spam score
@@ -268,27 +264,27 @@ function isSpam(text, userId, chatId, username) {
     reasons.push(`Burst messaging: ${behavior.burstCount} msgs/3s`);
   }
 
-  // Check spam patterns - INCREASED SCORES FOR STRICTER DETECTION
+  // Check spam patterns - BALANCED SCORING
   let patternMatches = 0;
   for (const pattern of SPAM_PATTERNS) {
     if (pattern.test(text)) {
-      score += 4; // Increased from 3
+      score += 3; // Back to 3 for balance
       patternMatches++;
       reasons.push(`Pattern: ${pattern.source.substring(0, 30)}...`);
     }
   }
 
   // Multiple pattern matches indicate higher spam probability
-  if (patternMatches >= 2) { // Reduced from 3 to 2 for stricter detection
-    score += 5;
+  if (patternMatches >= 3) { // Back to 3 for fewer false positives
+    score += 4;
     reasons.push('Multiple spam patterns detected');
   }
-  if (patternMatches >= 3) {
-    score += 3; // Additional penalty for 3+ patterns
+  if (patternMatches >= 4) {
+    score += 3; // Additional penalty for 4+ patterns
     reasons.push('High spam pattern concentration');
   }
 
-  // Check suspicious keywords - STRICTER SCORING
+  // Check suspicious keywords - BALANCED SCORING
   const lowerText = text.toLowerCase();
   let keywordCount = 0;
   for (const keyword of SUSPICIOUS_KEYWORDS) {
@@ -296,12 +292,12 @@ function isSpam(text, userId, chatId, username) {
       keywordCount++;
     }
   }
-  if (keywordCount >= 2) { // Reduced from 3
-    score += 3; // Increased from 2
+  if (keywordCount >= 3) { // Back to 3 for balance
+    score += 2; // Reduced back to 2
     reasons.push(`${keywordCount} suspicious keywords`);
   }
-  if (keywordCount >= 4) { // Reduced from 5
-    score += 4; // Increased from 3
+  if (keywordCount >= 5) { // Back to 5
+    score += 3; // Back to 3
     reasons.push('High concentration of spam keywords');
   }
 
@@ -416,7 +412,7 @@ function isSpam(text, userId, chatId, username) {
   console.log(`Spam analysis for ${username || 'Unknown'}: Score=${score}, Reasons=${reasons.join(', ')}`);
 
   return {
-    isSpam: score >= 4, // LOWERED THRESHOLD from 5 to 4 for stricter detection
+    isSpam: score >= 6, // BALANCED THRESHOLD - was 5, briefly 4, now 6
     score: score,
     reasons: reasons
   };
@@ -631,8 +627,14 @@ export default async function handler(req, res) {
         return res.status(200).json({ ok: true });
       }
 
-      // Skip bot messages and admin messages
+      // Skip bot messages, admin messages, and channel posts
       if (message.from.is_bot) {
+        return res.status(200).json({ ok: true });
+      }
+
+      // Skip messages from channels (they have negative IDs typically)
+      if (message.sender_chat) {
+        console.log('Skipping channel post');
         return res.status(200).json({ ok: true });
       }
 
