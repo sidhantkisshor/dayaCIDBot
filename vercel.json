@@ -1,7 +1,11 @@
 {
   "functions": {
-    "api/webhook.js": {
-      "maxDuration": 10
-    }
+    "api/webhook.js": { "maxDuration": 10 },
+    "api/setup.js": { "maxDuration": 10 },
+    "api/health.js": { "maxDuration": 10 },
+    "api/dashboard/health.js": { "maxDuration": 10 },
+    "api/dashboard/stats.js": { "maxDuration": 10 },
+    "api/dashboard/activity.js": { "maxDuration": 10 },
+    "api/dashboard/action.js": { "maxDuration": 10 }
   }
 }
