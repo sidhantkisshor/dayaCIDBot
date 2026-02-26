@@ -11,7 +11,7 @@ import {
   SPAM_THRESHOLD, INSTANT_BAN_THRESHOLD,
   USER_REPORT_ACTION_THRESHOLD, USER_REPORT_BAN_THRESHOLD, USER_REPORT_BONUS,
   MUTE_DURATION_1ST, MUTE_DURATION_2ND, MAX_WARNINGS_BEFORE_BAN,
-  REPORTS_FOR_AUTO_ACTION
+  REPORTS_FOR_AUTO_ACTION, getThreshold, loadOverrides
 } from '../lib/config.js';
 
 export default async function handler(req, res) {
@@ -21,6 +21,9 @@ export default async function handler(req, res) {
 
   try {
     const update = req.body;
+
+    // Refresh dashboard config overrides (cached, re-reads KV at most every 60s)
+    loadOverrides().catch(() => {});
 
     // Lazy cleanup: expire captcha verifications on every request
     await cleanupExpiredVerifications();
@@ -163,17 +166,9 @@ async function handleMessage(message, res) {
     return res.status(200).json({ ok: true });
   }
 
-  // ── Media caption spam check (only if caption wasn't already checked as text) ──
-  if ((message.photo || message.video || message.document) && message.caption && message.text) {
-    // message.text was checked above; now also check the caption separately
-    const captionCheck = await isSpam(message.caption, userId, chatId, username, message, hasUsername);
-    if (captionCheck.isSpam) {
-      console.log(`CAPTION SPAM from ${username}: Score=${captionCheck.score}`);
-      await deleteMessage(chatId, message.message_id);
-      await incrementStat(chatId, 'deleted');
-      await enforceSpam(chatId, userId, username, captionCheck.score, threadId);
-    }
-  }
+  // Note: media captions are already checked above — Telegram sets message.caption
+  // (not message.text) for media messages, and line 57 falls back to caption via
+  // `message.text || message.caption`, so the main spam check covers both cases.
 
   return res.status(200).json({ ok: true });
 }
@@ -185,7 +180,7 @@ async function enforceSpam(chatId, userId, username, score, threadId) {
   await setWarnings(chatId, userId, warnings);
 
   // Immediate ban for very high scores or 3rd offense
-  if (score >= INSTANT_BAN_THRESHOLD || warnings >= MAX_WARNINGS_BEFORE_BAN) {
+  if (score >= getThreshold('INSTANT_BAN_THRESHOLD') || warnings >= getThreshold('MAX_WARNINGS_BEFORE_BAN')) {
     const banResult = await banUser(chatId, userId);
     if (banResult?.ok) {
       await sendMessage(chatId, `🚫 <b>Tod diya isko! ${username}</b>`, true, threadId);
@@ -216,7 +211,7 @@ async function enforceSpam(chatId, userId, username, score, threadId) {
   await restrictUser(chatId, userId, { canSend: false }, until);
   await sendMessage(chatId,
     `🔇 <b>${username}</b> muted for 1 hour.\n` +
-    `<i>Warning 1/${MAX_WARNINGS_BEFORE_BAN - 1} — repeated violations will result in a ban</i>`,
+    `<i>Warning 1/${getThreshold('MAX_WARNINGS_BEFORE_BAN') - 1} — repeated violations will result in a ban</i>`,
     true, threadId
   );
   logToAdmin('SPAM MUTE 1H', chatId, userId, username, `Score: ${score}`);

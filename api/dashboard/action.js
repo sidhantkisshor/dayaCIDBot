@@ -10,39 +10,60 @@ export default withAuth(async (req, res) => {
 
   const { action, chatId, userId, key, value } = req.body || {};
 
+  // Validate numeric IDs for user-targeting actions
+  const ALLOWED_CONFIG_KEYS = ['SPAM_THRESHOLD', 'INSTANT_BAN_THRESHOLD', 'MAX_WARNINGS_BEFORE_BAN'];
+  function validateIds() {
+    const cid = Number(chatId);
+    const uid = Number(userId);
+    if (!Number.isFinite(cid) || !Number.isFinite(uid) || cid === 0 || uid === 0) {
+      return null;
+    }
+    return { cid, uid };
+  }
+
   switch (action) {
     case 'ban': {
-      if (!chatId || !userId) return res.status(400).json({ error: 'chatId and userId required' });
-      const result = await banUser(chatId, userId);
+      const ids = validateIds();
+      if (!ids) return res.status(400).json({ error: 'Valid numeric chatId and userId required' });
+      const result = await banUser(ids.cid, ids.uid);
       return res.status(200).json({ ok: result?.ok || false, action: 'ban' });
     }
 
     case 'unban': {
-      if (!chatId || !userId) return res.status(400).json({ error: 'chatId and userId required' });
-      const result = await unbanUser(chatId, userId);
-      await deleteWarnings(chatId, userId);
-      clearReports(chatId, userId);
+      const ids = validateIds();
+      if (!ids) return res.status(400).json({ error: 'Valid numeric chatId and userId required' });
+      const result = await unbanUser(ids.cid, ids.uid);
+      await deleteWarnings(ids.cid, ids.uid);
+      clearReports(ids.cid, ids.uid);
       return res.status(200).json({ ok: result?.ok || false, action: 'unban' });
     }
 
     case 'trust': {
-      if (!chatId || !userId) return res.status(400).json({ error: 'chatId and userId required' });
-      await setTrusted(chatId, userId, true);
-      await deleteWarnings(chatId, userId);
-      clearReports(chatId, userId);
+      const ids = validateIds();
+      if (!ids) return res.status(400).json({ error: 'Valid numeric chatId and userId required' });
+      await setTrusted(ids.cid, ids.uid, true);
+      await deleteWarnings(ids.cid, ids.uid);
+      clearReports(ids.cid, ids.uid);
       return res.status(200).json({ ok: true, action: 'trust' });
     }
 
     case 'untrust': {
-      if (!chatId || !userId) return res.status(400).json({ error: 'chatId and userId required' });
-      await setTrusted(chatId, userId, false);
+      const ids = validateIds();
+      if (!ids) return res.status(400).json({ error: 'Valid numeric chatId and userId required' });
+      await setTrusted(ids.cid, ids.uid, false);
       return res.status(200).json({ ok: true, action: 'untrust' });
     }
 
     case 'setConfig': {
-      if (!key) return res.status(400).json({ error: 'key required' });
-      await setConfigOverride(key, value);
-      return res.status(200).json({ ok: true, action: 'setConfig', key, value });
+      if (!key || !ALLOWED_CONFIG_KEYS.includes(key)) {
+        return res.status(400).json({ error: `Invalid config key. Allowed: ${ALLOWED_CONFIG_KEYS.join(', ')}` });
+      }
+      const numValue = Number(value);
+      if (!Number.isFinite(numValue) || numValue < 1 || numValue > 30) {
+        return res.status(400).json({ error: 'Value must be a number between 1 and 30' });
+      }
+      await setConfigOverride(key, numValue);
+      return res.status(200).json({ ok: true, action: 'setConfig', key, value: numValue });
     }
 
     case 'getConfig': {

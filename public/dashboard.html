@@ -1018,6 +1018,10 @@ function esc(s) {
   return d.innerHTML;
 }
 
+function escAttr(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 // ── Chat List ──
 function renderChatList(chats) {
   const entries = Object.entries(chats);
@@ -1031,7 +1035,7 @@ function renderChatList(chats) {
 
   container.innerHTML = entries.map(([id, info]) => `
     <div class="chat-item">
-      <span class="chat-name" title="${esc(info.title || '')}">${esc(info.title || 'Untitled')}</span>
+      <span class="chat-name" title="${escAttr(info.title || '')}">${esc(info.title || 'Untitled')}</span>
       <span class="chat-id">${id}</span>
     </div>
   `).join('');
@@ -1048,6 +1052,8 @@ async function doAction(action) {
     result.textContent = 'Chat ID and User ID required';
     return;
   }
+
+  if (action === 'ban' && !confirm(`Ban user ${userId} from chat ${chatId}?`)) return;
 
   try {
     const d = await dashFetch('/action', {
@@ -1099,9 +1105,12 @@ function showToast(msg) {
   setTimeout(() => t.remove(), 3000);
 }
 
-// ── Auto-login if token stored ──
+// ── Auto-login if token stored (validate first) ──
 if (token) {
-  showDashboard();
+  dashFetch('/health').then(d => {
+    if (d.bot) showDashboard();
+    else doLogout();
+  }).catch(() => doLogout());
 }
 </script>
 </body>
