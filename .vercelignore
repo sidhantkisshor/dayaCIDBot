@@ -1,0 +1,6 @@
+.git
+.claude
+.cursor
+.github
+*.md
+!package.json

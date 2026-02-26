@@ -1,7 +1,7 @@
 {
   "name": "dayacid-bot",
-  "version": "2.0.0",
-  "description": "Telegram spam blocker bot",
+  "version": "3.0.0",
+  "description": "DayaCID Bot — Telegram anti-spam bot for trading communities",
   "type": "module",
   "scripts": {
     "deploy": "vercel --prod"

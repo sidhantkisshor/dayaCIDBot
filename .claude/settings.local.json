@@ -18,7 +18,8 @@
       "Bash(curl:*)",
       "WebFetch(domain:dayacidbot-82oakq1y0-sidhants-projects-bb2d31ab.vercel.app)",
       "Bash(npm run dev:*)",
-      "Bash(vercel:*)"
+      "Bash(vercel:*)",
+      "Bash(do node:*)"
     ],
     "deny": []
   }
