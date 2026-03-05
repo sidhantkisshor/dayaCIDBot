@@ -6,7 +6,7 @@ import { isSpam } from '../lib/spam.js';
 import { handleCommand } from '../lib/commands.js';
 import { handleChatMember, handleCallbackQuery, handleNewChatMembers, cleanupExpiredVerifications } from '../lib/captcha.js';
 import { checkCAS } from '../lib/cas.js';
-import { getWarnings, setWarnings, deleteWarnings, incrementStat, isTrusted, addReport, getReportCount, clearReports, registerActiveChat, isNewMember } from '../lib/state.js';
+import { getWarnings, setWarnings, deleteWarnings, incrementStat, isTrusted, addReport, getReportCount, clearReports, registerActiveChat, isNewMember, processAutoDeletes } from '../lib/state.js';
 import {
   SPAM_THRESHOLD, INSTANT_BAN_THRESHOLD,
   USER_REPORT_ACTION_THRESHOLD, USER_REPORT_BAN_THRESHOLD, USER_REPORT_BONUS,
@@ -27,6 +27,9 @@ export default async function handler(req, res) {
 
     // Lazy cleanup: expire captcha verifications on every request
     await cleanupExpiredVerifications();
+
+    // Lazy cleanup: delete bot messages that have expired
+    await processAutoDeletes(deleteMessage);
 
     // ── Route by update type ──
 

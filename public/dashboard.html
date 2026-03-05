@@ -402,11 +402,11 @@
 
   .activity-item {
     display: grid;
-    grid-template-columns: 70px auto 1fr;
+    grid-template-columns: 70px auto 1fr auto;
     gap: 10px;
     padding: 10px 0;
     border-bottom: 1px solid var(--border);
-    align-items: start;
+    align-items: center;
     font-size: 12px;
     animation: fadeIn 0.3s ease;
   }
@@ -449,6 +449,51 @@
   .activity-detail strong {
     color: var(--text-0);
     font-weight: 500;
+  }
+
+  .activity-actions {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .act-btn {
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .act-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .act-btn.act-ban {
+    color: var(--red);
+    background: transparent;
+    border-color: var(--red-dim);
+  }
+
+  .act-btn.act-ban:hover:not(:disabled) {
+    background: var(--red-dim);
+  }
+
+  .act-btn.act-unban {
+    color: var(--green);
+    background: transparent;
+    border-color: var(--green-dim);
+  }
+
+  .act-btn.act-unban:hover:not(:disabled) {
+    background: var(--green-dim);
   }
 
   .activity-empty {
@@ -992,10 +1037,18 @@ async function loadActivity() {
     container.innerHTML = reversed.map(item => {
       const time = new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const tag = getTag(item.action);
+      const hasIds = item.chatId && item.userId;
+      const actBtns = hasIds
+        ? `<span class="activity-actions">
+            <button class="act-btn act-ban" onclick="quickAction('ban',${Number(item.chatId)},${Number(item.userId)},'${escAttr(item.username||'')}',this)" title="Ban user">BAN</button>
+            <button class="act-btn act-unban" onclick="quickAction('unban',${Number(item.chatId)},${Number(item.userId)},'${escAttr(item.username||'')}',this)" title="Unban user">UNBAN</button>
+          </span>`
+        : '';
       return `<div class="activity-item">
         <span class="activity-time">${time}</span>
         <span class="activity-tag ${tag.cls}">${tag.label}</span>
         <span class="activity-detail"><strong>${esc(item.username || '?')}</strong> ${esc(item.details || '')}</span>
+        ${actBtns}
       </div>`;
     }).join('');
   } catch { /* handled */ }
@@ -1066,6 +1119,28 @@ async function doAction(action) {
   } catch (e) {
     result.className = 'mgmt-result err';
     result.textContent = e.message;
+  }
+}
+
+// ── Quick Action (from activity feed) ──
+async function quickAction(action, chatId, userId, username, btn) {
+  if (action === 'ban' && !confirm(`Ban ${username || userId} from chat ${chatId}?`)) return;
+  btn.disabled = true;
+  try {
+    const d = await dashFetch('/action', {
+      method: 'POST',
+      body: JSON.stringify({ action, chatId, userId }),
+    });
+    showToast(`${action.toUpperCase()} ${username || userId}: ${d.ok ? 'OK' : 'FAIL'}`);
+    if (d.ok) {
+      btn.textContent = 'DONE';
+      btn.style.opacity = '0.5';
+    } else {
+      btn.disabled = false;
+    }
+  } catch (e) {
+    showToast(`${action} failed: ${e.message}`);
+    btn.disabled = false;
   }
 }
 

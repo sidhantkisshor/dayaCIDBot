@@ -2,15 +2,22 @@
 // GET /api/setup?secret=<SETUP_SECRET> — configures webhook with correct allowed_updates
 // Protected: requires SETUP_SECRET env var or TELEGRAM_BOT_TOKEN as query param
 
+import { timingSafeEqual } from 'node:crypto';
 import { setWebhook, getWebhookInfo, getMe } from '../lib/telegram.js';
 import { TOKEN } from '../lib/config.js';
+
+function safeEqual(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(Buffer.from(a), Buffer.from(b));
+}
 
 export default async function handler(req, res) {
   // Protect this endpoint — require a secret to prevent unauthorized reconfiguration
   const secret = req.query?.secret || req.headers['x-setup-secret'];
   const expectedSecret = process.env.SETUP_SECRET || TOKEN;
 
-  if (!secret || secret !== expectedSecret) {
+  if (!secret || !safeEqual(secret, expectedSecret)) {
     return res.status(403).json({
       error: 'Forbidden',
       hint: 'Pass ?secret=<SETUP_SECRET> or ?secret=<TELEGRAM_BOT_TOKEN>'

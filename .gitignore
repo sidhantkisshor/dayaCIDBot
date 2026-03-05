@@ -45,3 +45,4 @@ tmp/
 
 # Claude Code
 .claude/worktrees/
+.env*.local
