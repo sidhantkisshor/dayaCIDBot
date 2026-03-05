@@ -6,7 +6,7 @@ import { isSpam } from '../lib/spam.js';
 import { handleCommand } from '../lib/commands.js';
 import { handleChatMember, handleCallbackQuery, handleNewChatMembers, cleanupExpiredVerifications } from '../lib/captcha.js';
 import { checkCAS } from '../lib/cas.js';
-import { getWarnings, setWarnings, deleteWarnings, incrementStat, isTrusted, addReport, getReportCount, clearReports, registerActiveChat } from '../lib/state.js';
+import { getWarnings, setWarnings, deleteWarnings, incrementStat, isTrusted, addReport, getReportCount, clearReports, registerActiveChat, isNewMember } from '../lib/state.js';
 import {
   SPAM_THRESHOLD, INSTANT_BAN_THRESHOLD,
   USER_REPORT_ACTION_THRESHOLD, USER_REPORT_BAN_THRESHOLD, USER_REPORT_BONUS,
@@ -105,20 +105,40 @@ async function handleMessage(message, res) {
   if (isForwarded) {
     const forwardFromChat = message.forward_from_chat || message.forward_origin?.chat;
 
-    // Forwarded from a channel/group → delete + ban
+    // Forwarded from a channel/group → delete + graduated enforcement
     if (forwardFromChat) {
       console.log(`Forward from channel/group by ${username}: ${forwardFromChat.title || forwardFromChat.id}`);
       await deleteMessage(chatId, message.message_id);
-      const banResult = await banUser(chatId, userId);
-      if (banResult?.ok) {
+      await incrementStat(chatId, 'deleted');
+
+      const warnings = (await getWarnings(chatId, userId)) + 1;
+      await setWarnings(chatId, userId, warnings);
+
+      if (warnings >= 2) {
+        const banResult = await banUser(chatId, userId);
+        if (banResult?.ok) {
+          await sendMessage(chatId,
+            `🚫 <b>Tod diya isko! ${username}</b>\n` +
+            `<i>Repeated forwarding from channels/groups</i>`,
+            true, threadId
+          );
+          logToAdmin('FORWARD BAN', chatId, userId, username,
+            `Forwarded from: ${forwardFromChat.title || forwardFromChat.id}`);
+          await incrementStat(chatId, 'banned');
+        }
+        await deleteWarnings(chatId, userId);
+      } else {
+        // 1st offense → mute 24h + warning
+        const until = Math.floor(Date.now() / 1000) + MUTE_DURATION_2ND;
+        await restrictUser(chatId, userId, { canSend: false }, until);
         await sendMessage(chatId,
-          `🚫 <b>Tod diya isko! ${username}</b>\n` +
-          `<i>Forwarding from channels/groups is not allowed</i>`,
+          `🔇 <b>${username}</b> muted for 24 hours.\n` +
+          `<i>Forwarding from channels/groups is not allowed. Next offense = ban.</i>`,
           true, threadId
         );
-        logToAdmin('FORWARD BAN', chatId, userId, username,
+        logToAdmin('FORWARD MUTE', chatId, userId, username,
           `Forwarded from: ${forwardFromChat.title || forwardFromChat.id}`);
-        await incrementStat(chatId, 'banned');
+        await incrementStat(chatId, 'muted');
       }
       return res.status(200).json({ ok: true });
     }
@@ -158,8 +178,13 @@ async function handleMessage(message, res) {
   // ── Spam detection ──
   const spamCheck = await isSpam(text, userId, chatId, username, message, hasUsername);
 
-  if (spamCheck.isSpam) {
-    console.log(`SPAM DETECTED from ${username}: Score=${spamCheck.score}, Reasons=${spamCheck.reasons.join(', ')}`);
+  // Recently verified members get a higher threshold (10 instead of 6) for 30 min
+  const effectiveThreshold = isNewMember(chatId, userId)
+    ? getThreshold('INSTANT_BAN_THRESHOLD')
+    : getThreshold('SPAM_THRESHOLD');
+
+  if (spamCheck.score >= effectiveThreshold) {
+    console.log(`SPAM DETECTED from ${username}: Score=${spamCheck.score}, Threshold=${effectiveThreshold}, Reasons=${spamCheck.reasons.join(', ')}`);
     await deleteMessage(chatId, message.message_id);
     await incrementStat(chatId, 'deleted');
     await enforceSpam(chatId, userId, username, spamCheck.score, threadId);
