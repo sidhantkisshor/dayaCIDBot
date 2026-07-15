@@ -3,6 +3,10 @@ import { withAuth } from '../../lib/dashboardAuth.js';
 import { getStats, getDailyStats, getActiveChats } from '../../lib/state.js';
 
 export default withAuth(async (req, res) => {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'GET only' });
+  }
+
   const activeChats = await getActiveChats();
   const chatIds = Object.keys(activeChats);
 

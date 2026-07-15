@@ -12,6 +12,11 @@ export default withAuth(async (req, res) => {
 
   // Validate numeric IDs for user-targeting actions
   const ALLOWED_CONFIG_KEYS = ['SPAM_THRESHOLD', 'INSTANT_BAN_THRESHOLD', 'MAX_WARNINGS_BEFORE_BAN'];
+  const CONFIG_KEY_RANGES = {
+    SPAM_THRESHOLD: [1, 20],
+    INSTANT_BAN_THRESHOLD: [1, 30],
+    MAX_WARNINGS_BEFORE_BAN: [1, 10],
+  };
   function validateIds() {
     const cid = Number(chatId);
     const uid = Number(userId);
@@ -33,9 +38,15 @@ export default withAuth(async (req, res) => {
       const ids = validateIds();
       if (!ids) return res.status(400).json({ error: 'Valid numeric chatId and userId required' });
       const result = await unbanUser(ids.cid, ids.uid);
-      await deleteWarnings(ids.cid, ids.uid);
-      clearReports(ids.cid, ids.uid);
-      return res.status(200).json({ ok: result?.ok || false, action: 'unban' });
+      if (result?.ok) {
+        await deleteWarnings(ids.cid, ids.uid);
+        clearReports(ids.cid, ids.uid);
+      }
+      return res.status(200).json({
+        ok: result?.ok || false,
+        action: 'unban',
+        ...(result?.description ? { description: result.description } : {}),
+      });
     }
 
     case 'trust': {
@@ -59,8 +70,9 @@ export default withAuth(async (req, res) => {
         return res.status(400).json({ error: `Invalid config key. Allowed: ${ALLOWED_CONFIG_KEYS.join(', ')}` });
       }
       const numValue = Number(value);
-      if (!Number.isFinite(numValue) || numValue < 1 || numValue > 30) {
-        return res.status(400).json({ error: 'Value must be a number between 1 and 30' });
+      const [min, max] = CONFIG_KEY_RANGES[key];
+      if (!Number.isFinite(numValue) || numValue < min || numValue > max) {
+        return res.status(400).json({ error: `Value for ${key} must be a number between ${min} and ${max}` });
       }
       await setConfigOverride(key, numValue);
       return res.status(200).json({ ok: true, action: 'setConfig', key, value: numValue });

@@ -4,6 +4,10 @@ import { TOKEN, KV_REST_API_URL, KV_REST_API_TOKEN } from '../../lib/config.js';
 import { getActiveChats } from '../../lib/state.js';
 
 export default withAuth(async (req, res) => {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'GET only' });
+  }
+
   let botInfo = null;
   let webhookInfo = null;
 
