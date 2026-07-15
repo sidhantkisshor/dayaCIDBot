@@ -6,7 +6,7 @@
 
 ## What it is
 A Telegram anti-spam bot for Indian trading communities. Deployed as **Vercel
-serverless functions** using the Telegram Bot API via webhooks. **Node.js 18+,
+serverless functions** using the Telegram Bot API via webhooks. **Node.js 24,
 ES modules, zero npm dependencies** (built-in `fetch`/`Map`/`Set`/`RegExp` only).
 There is no Python, no ML framework, and no SQL database — spam detection is
 regex/keyword scoring, and persistence is optional Upstash Redis over its REST API.

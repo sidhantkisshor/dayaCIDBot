@@ -2,7 +2,7 @@
 
 ## What This Is
 
-DayaCID Bot — a Telegram anti-spam bot built for Indian trading communities. Detects and removes crypto scams, forex signal spam, financial fraud, and group promotion spam. Deployed as a Vercel serverless function using the Telegram Bot API via webhooks. Zero npm dependencies; uses only Node.js 18+ built-ins (`fetch`, `Map`, `Set`, `RegExp`).
+DayaCID Bot — a Telegram anti-spam bot built for Indian trading communities. Detects and removes crypto scams, forex signal spam, financial fraud, and group promotion spam. Deployed as a Vercel serverless function using the Telegram Bot API via webhooks. Zero npm dependencies; uses only Node.js 24 built-ins (`fetch`, `Map`, `Set`, `RegExp`).
 
 ## Development & Deployment
 

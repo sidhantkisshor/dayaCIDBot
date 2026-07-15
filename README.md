@@ -2,7 +2,7 @@
 
 Telegram anti-spam bot built for Indian trading communities. Catches crypto scams, forex signal spam, financial fraud, and group promotion spam.
 
-**Zero npm dependencies.** Runs on Vercel serverless with Node.js 18+ built-ins only.
+**Zero npm dependencies.** Runs on Vercel serverless with Node.js 24 built-ins only.
 
 ## Features
 
