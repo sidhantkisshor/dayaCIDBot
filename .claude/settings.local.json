@@ -25,7 +25,19 @@
       "mcp__plugin_playwright_playwright__browser_navigate",
       "mcp__plugin_playwright_playwright__browser_install",
       "WebFetch(domain:dayacid.hitpoint.app)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "PowerShell(git *)",
+      "PowerShell(Get-Content \"E:\\\\Dev Projects\\\\Cursor\\\\dayaCIDBot\\\\public\\\\dashboard.html\" -TotalCount 8 | Select-Object -Index 6; \\(Get-Item \"E:\\\\Dev Projects\\\\Cursor\\\\dayaCIDBot\\\\public\\\\dashboard.html\"\\).Length)",
+      "Bash(openssl dgst *)",
+      "Bash(openssl base64 *)",
+      "WebFetch(domain:core.telegram.org)",
+      "mcp__claude_ai_Context7__query-docs",
+      "mcp__claude_ai_Context7__resolve-library-id",
+      "WebFetch(domain:www.chartjs.org)",
+      "WebFetch(domain:api.cas.chat)",
+      "Bash(python -)",
+      "Bash(git rev-list *)",
+      "Bash(git branch *)"
     ],
     "deny": []
   }
