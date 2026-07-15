@@ -11,8 +11,15 @@ import { incrementWarnings, deleteWarnings, incrementStat, isTrusted, addReport,
 import {
   USER_REPORT_ACTION_THRESHOLD, USER_REPORT_BAN_THRESHOLD, USER_REPORT_BONUS,
   MUTE_DURATION_1ST, MUTE_DURATION_2ND,
-  REPORTS_FOR_AUTO_ACTION, getThreshold, loadOverrides
+  REPORTS_FOR_AUTO_ACTION, getThreshold, loadOverrides, STALE_UPDATE_THRESHOLD
 } from '../lib/config.js';
+
+// True when a Telegram update is a backlog replay (sent while the webhook was
+// down), not live traffic. Enforcement must skip stale updates: replays arrive
+// in a burst, so flood/burst scoring bans normal users for "flooding".
+function isStaleUpdate(unixDate) {
+  return typeof unixDate === 'number' && (Date.now() / 1000 - unixDate) > STALE_UPDATE_THRESHOLD;
+}
 
 // Constant-time string compare (avoids leaking the secret via timing).
 function safeEqual(a, b) {
@@ -53,6 +60,12 @@ export default async function handler(req, res) {
 
     // 1. Chat member updates (new joins/leaves)
     if (update.chat_member) {
+      // A stale join replay must not mute + captcha-challenge someone who
+      // joined long ago (they'd never see the challenge and get timeout-banned).
+      if (isStaleUpdate(update.chat_member.date)) {
+        console.log(`Skipping stale chat_member update (${Math.round(Date.now() / 1000 - update.chat_member.date)}s old)`);
+        return res.status(200).json({ ok: true });
+      }
       return handleChatMember(update.chat_member, res);
     }
 
@@ -116,6 +129,14 @@ async function handleMessage(message, res) {
 
   // Register this chat for dashboard tracking
   registerActiveChat(chatId, message.chat.title).catch(() => {});
+
+  // ── Skip enforcement for backlog replays ──
+  // Messages sent while the webhook was down arrive here in a burst; scoring
+  // them would false-flag normal users as flooders (2026-07-15 incident).
+  if (isStaleUpdate(message.date)) {
+    console.log(`Skipping stale message from ${username} (${Math.round(Date.now() / 1000 - message.date)}s old)`);
+    return res.status(200).json({ ok: true });
+  }
 
   // ── Handle new_chat_members service message (fallback) ──
   if (message.new_chat_members && message.new_chat_members.length > 0) {

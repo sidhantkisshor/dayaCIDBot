@@ -44,7 +44,8 @@ lib/
 The `handler()` in `api/webhook.js` routes Telegram updates:
 
 1. **Lazy cleanup** — expire pending captcha verifications on every request
-2. **`chat_member` update** — routes to `handleChatMember()` in captcha.js (new member join flow)
+2. **Stale-update guard** — updates older than `STALE_UPDATE_THRESHOLD` (120s) skip all enforcement; backlog replays after webhook downtime would otherwise trigger flood scoring on normal users
+3. **`chat_member` update** — routes to `handleChatMember()` in captcha.js (new member join flow)
 3. **`callback_query` update** — routes to `handleCallbackQuery()` in captcha.js (captcha button presses)
 4. **`message` update** — routes to `handleMessage()`:
    a. **Register active chat** — tracks chat for dashboard
