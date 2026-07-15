@@ -1,7 +1,8 @@
 // DayaCID Bot — Webhook Handler (Thin Router)
 // All logic lives in lib/ modules. This file routes Telegram updates.
 
-import { sendMessage, deleteMessage, banUser, restrictUser, isAdmin, logToAdmin, escapeHtml } from '../lib/telegram.js';
+import { timingSafeEqual } from 'node:crypto';
+import { sendMessage, deleteMessage, banUser, restrictUser, isAdmin, logToAdmin, escapeHtml, approveChatJoinRequest, declineChatJoinRequest } from '../lib/telegram.js';
 import { isSpam } from '../lib/spam.js';
 import { handleCommand } from '../lib/commands.js';
 import { handleChatMember, handleCallbackQuery, handleNewChatMembers, cleanupExpiredVerifications } from '../lib/captcha.js';
@@ -13,9 +14,27 @@ import {
   REPORTS_FOR_AUTO_ACTION, getThreshold, loadOverrides
 } from '../lib/config.js';
 
+// Constant-time string compare (avoids leaking the secret via timing).
+function safeEqual(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(Buffer.from(a), Buffer.from(b));
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(200).json({ ok: true });
+  }
+
+  // Verify the request really came from Telegram. Only enforced when
+  // WEBHOOK_SECRET is configured, so existing deployments keep working until
+  // the operator sets it and re-runs /api/setup (see REMEDIATION_SUMMARY.md).
+  const webhookSecret = process.env.WEBHOOK_SECRET;
+  if (webhookSecret) {
+    const provided = req.headers['x-telegram-bot-api-secret-token'] || '';
+    if (!safeEqual(provided, webhookSecret)) {
+      return res.status(401).json({ ok: false });
+    }
   }
 
   try {
@@ -42,7 +61,12 @@ export default async function handler(req, res) {
       return handleCallbackQuery(update.callback_query, res);
     }
 
-    // 3. Messages
+    // 3. Join requests (groups with "approve new members" enabled)
+    if (update.chat_join_request) {
+      return handleJoinRequest(update.chat_join_request, res);
+    }
+
+    // 4. Messages
     if (update.message) {
       return handleMessage(update.message, res);
     }
@@ -52,6 +76,31 @@ export default async function handler(req, res) {
     console.error('Webhook error:', error);
     return res.status(200).json({ ok: true });
   }
+}
+
+// ── Join Request Handler ──
+// For groups that require admin approval to join. We CAS-check the requester;
+// known spammers are declined, everyone else is approved and then goes through
+// the normal new-member captcha flow (approval produces a chat_member update).
+async function handleJoinRequest(joinRequest, res) {
+  const chatId = joinRequest.chat.id;
+  const user = joinRequest.from;
+  const userId = user.id;
+  const firstName = user.first_name || 'User';
+
+  try {
+    if (await checkCAS(userId)) {
+      await declineChatJoinRequest(chatId, userId);
+      logToAdmin('JOIN DECLINED', chatId, userId, firstName, 'CAS-banned (known spammer)');
+      await incrementStat(chatId, 'banned');
+      return res.status(200).json({ ok: true });
+    }
+    await approveChatJoinRequest(chatId, userId);
+    logToAdmin('JOIN APPROVED', chatId, userId, firstName, 'Approved — captcha will follow');
+  } catch (err) {
+    console.error(`handleJoinRequest error: ${err.message}`);
+  }
+  return res.status(200).json({ ok: true });
 }
 
 // ── Message Handler ──

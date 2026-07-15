@@ -1,10 +1,9 @@
 // DayaCID Bot — One-time Webhook Setup Endpoint
 // GET /api/setup?secret=<SETUP_SECRET> — configures webhook with correct allowed_updates
-// Protected: requires SETUP_SECRET env var or TELEGRAM_BOT_TOKEN as query param
+// Protected: requires the SETUP_SECRET env var to be set (fails closed otherwise).
 
 import { timingSafeEqual } from 'node:crypto';
 import { setWebhook, getWebhookInfo, getMe } from '../lib/telegram.js';
-import { TOKEN } from '../lib/config.js';
 
 function safeEqual(a, b) {
   if (typeof a !== 'string' || typeof b !== 'string') return false;
@@ -13,15 +12,16 @@ function safeEqual(a, b) {
 }
 
 export default async function handler(req, res) {
-  // Protect this endpoint — require a secret to prevent unauthorized reconfiguration
-  const secret = req.query?.secret || req.headers['x-setup-secret'];
-  const expectedSecret = process.env.SETUP_SECRET || TOKEN;
+  // Fail closed: this endpoint can repoint the bot's webhook, so it must not be
+  // usable without an explicitly configured secret. No bot-token fallback.
+  const expectedSecret = process.env.SETUP_SECRET;
+  if (!expectedSecret) {
+    return res.status(503).json({ error: 'SETUP_SECRET is not configured' });
+  }
 
+  const secret = req.query?.secret || req.headers['x-setup-secret'];
   if (!secret || !safeEqual(secret, expectedSecret)) {
-    return res.status(403).json({
-      error: 'Forbidden',
-      hint: 'Pass ?secret=<SETUP_SECRET> or ?secret=<TELEGRAM_BOT_TOKEN>'
-    });
+    return res.status(403).json({ error: 'Forbidden' });
   }
 
   try {
@@ -31,10 +31,17 @@ export default async function handler(req, res) {
       return res.status(200).json({ error: 'Invalid bot token', botInfo });
     }
 
-    // Determine webhook URL from request headers
-    const host = req.headers['x-forwarded-host'] || req.headers.host;
-    const proto = req.headers['x-forwarded-proto'] || 'https';
-    const webhookUrl = `${proto}://${host}/api/webhook`;
+    // Webhook URL: prefer the operator-set PUBLIC_URL (stable production domain);
+    // fall back to request headers only if it isn't configured. This prevents a
+    // spoofed Host header from repointing the webhook.
+    let webhookUrl;
+    if (process.env.PUBLIC_URL) {
+      webhookUrl = `${process.env.PUBLIC_URL.replace(/\/+$/, '')}/api/webhook`;
+    } else {
+      const host = req.headers['x-forwarded-host'] || req.headers.host;
+      const proto = req.headers['x-forwarded-proto'] || 'https';
+      webhookUrl = `${proto}://${host}/api/webhook`;
+    }
 
     // Set webhook with the correct allowed_updates
     const allowedUpdates = [
@@ -44,7 +51,8 @@ export default async function handler(req, res) {
       'chat_join_request'
     ];
 
-    const result = await setWebhook(webhookUrl, allowedUpdates);
+    // Pass the webhook secret if configured, so Telegram signs every call.
+    const result = await setWebhook(webhookUrl, allowedUpdates, process.env.WEBHOOK_SECRET || null);
 
     // Get current webhook info for verification
     const webhookInfo = await getWebhookInfo();
@@ -65,6 +73,8 @@ export default async function handler(req, res) {
         last_error_message: webhookInfo?.result?.last_error_message,
       },
       configuredUpdates: allowedUpdates,
+      webhookSecretActive: Boolean(process.env.WEBHOOK_SECRET),
+      publicUrlUsed: Boolean(process.env.PUBLIC_URL),
     });
   } catch (error) {
     return res.status(500).json({ error: error.message });
