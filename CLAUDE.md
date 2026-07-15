@@ -52,7 +52,7 @@ The `handler()` in `api/webhook.js` routes Telegram updates:
    c. **User report check** — if message mentions `@dayacidbot` (case-insensitive) and is a reply, analyze reported message
    d. **Command handling** — routes to `lib/commands.js`; unknown commands fall through to spam check
    e. **Skip bots/channels/admins**
-   f. **Forwarded message check** — channel forwards = instant ban; user forwards = graduated enforcement
+   f. **Forwarded message check** — both channel and user forwards use graduated enforcement (mute/warn → ban)
    g. **Spam scoring** — `isSpam()` with Unicode normalization, entity-based URL detection, and `hasUsername` flag
    h. **Media caption check** — separate spam check for captions when message also has text
 
@@ -109,8 +109,8 @@ Score >= 8 with bonus:      delete -> immediate ban
 
 ### Other:
 ```
-Forwarded from channel/group: delete -> instant ban
-Forwarded from user:          delete -> warn (1st) -> ban (2nd)
+Forwarded from channel/group: delete -> mute 24h (1st) -> ban (Nth, MAX_WARNINGS_BEFORE_BAN)
+Forwarded from user:          delete -> warn (1st) -> ban (Nth, MAX_WARNINGS_BEFORE_BAN)
 New member:                   CAS check -> mute -> captcha challenge -> unmute on success
 Captcha timeout (2 min):      ban + delete challenge message
 Trusted users:                bypass all checks

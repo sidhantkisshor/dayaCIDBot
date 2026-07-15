@@ -6,11 +6,10 @@ import { isSpam } from '../lib/spam.js';
 import { handleCommand } from '../lib/commands.js';
 import { handleChatMember, handleCallbackQuery, handleNewChatMembers, cleanupExpiredVerifications } from '../lib/captcha.js';
 import { checkCAS } from '../lib/cas.js';
-import { incrementWarnings, deleteWarnings, incrementStat, isTrusted, addReport, getReportCount, clearReports, registerActiveChat, isNewMember, processAutoDeletes } from '../lib/state.js';
+import { incrementWarnings, deleteWarnings, incrementStat, isTrusted, addReport, clearReports, registerActiveChat, isNewMember, processAutoDeletes } from '../lib/state.js';
 import {
-  SPAM_THRESHOLD, INSTANT_BAN_THRESHOLD,
   USER_REPORT_ACTION_THRESHOLD, USER_REPORT_BAN_THRESHOLD, USER_REPORT_BONUS,
-  MUTE_DURATION_1ST, MUTE_DURATION_2ND, MAX_WARNINGS_BEFORE_BAN,
+  MUTE_DURATION_1ST, MUTE_DURATION_2ND,
   REPORTS_FOR_AUTO_ACTION, getThreshold, loadOverrides
 } from '../lib/config.js';
 
