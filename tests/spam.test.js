@@ -64,10 +64,22 @@ describe('isSpam — return shape', () => {
     assert.ok(result.reasons.length > 0);
   });
 
-  test('returns { isSpam: false, score: 0, reasons: [] } for empty text', async () => {
+  test('returns { isSpam: false, score: 0, reasons: [] } for a single empty-text (captionless media) message', async () => {
     const { userId, chatId } = freshIds();
     const result = await isSpam('', userId, chatId, 'user', null, true);
     assert.deepEqual(result, { isSpam: false, score: 0, reasons: [] });
+  });
+
+  // Regression for H6: captionless media (empty text) must still run flood/burst
+  // detection so a sticker/photo flood is caught.
+  test('captionless media flood is detected (behavior analysis runs on empty text)', async () => {
+    const { userId, chatId } = freshIds();
+    let result;
+    for (let i = 0; i < 6; i++) {
+      result = await isSpam('', userId, chatId, 'user', null, true);
+    }
+    assert.equal(result.isSpam, true, `expected media flood to be flagged, got score=${result.score}`);
+    assert.ok(result.reasons.some(r => r.includes('Flooding')), 'expected a Flooding reason');
   });
 });
 
