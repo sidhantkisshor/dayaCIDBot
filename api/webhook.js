@@ -75,6 +75,11 @@ async function handleMessage(message, res) {
     // Don't return — continue processing in case the join message has other content
   }
 
+  // ── Skip bots (checked before reports/commands so a bot can't game report counts) ──
+  if (message.from.is_bot) {
+    return res.status(200).json({ ok: true });
+  }
+
   // ── User report check (bot mentioned in a reply) ──
   if (text && text.toLowerCase().includes('@dayacidbot')) {
     if (message.reply_to_message) {
@@ -89,11 +94,6 @@ async function handleMessage(message, res) {
     if (handled) return res.status(200).json({ ok: true });
   }
 
-  // ── Skip bots ──
-  if (message.from.is_bot) {
-    return res.status(200).json({ ok: true });
-  }
-
   // ── Skip channel posts ──
   if (message.sender_chat) {
     return res.status(200).json({ ok: true });
@@ -106,7 +106,7 @@ async function handleMessage(message, res) {
 
   // ── Forwarded message handling ──
   if (isForwarded) {
-    const forwardFromChat = message.forward_from_chat || message.forward_origin?.chat;
+    const forwardFromChat = message.forward_from_chat || message.forward_origin?.chat || message.forward_origin?.sender_chat;
 
     // Forwarded from a channel/group → delete + graduated enforcement
     if (forwardFromChat) {
@@ -117,7 +117,7 @@ async function handleMessage(message, res) {
       const warnings = (await getWarnings(chatId, userId)) + 1;
       await setWarnings(chatId, userId, warnings);
 
-      if (warnings >= 2) {
+      if (warnings >= getThreshold('MAX_WARNINGS_BEFORE_BAN')) {
         const banResult = await banUser(chatId, userId);
         if (banResult?.ok) {
           await sendMessage(chatId,
@@ -128,8 +128,9 @@ async function handleMessage(message, res) {
           logToAdmin('FORWARD BAN', chatId, userId, username,
             `Forwarded from: ${forwardFromChat.title || forwardFromChat.id}`);
           await incrementStat(chatId, 'banned');
+          await deleteWarnings(chatId, userId);
         }
-        await deleteWarnings(chatId, userId);
+        // On ban failure, keep the warning count so the next offense retries the ban.
       } else {
         // 1st offense → mute 24h + warning
         const until = Math.floor(Date.now() / 1000) + MUTE_DURATION_2ND;
@@ -155,7 +156,7 @@ async function handleMessage(message, res) {
       const warnings = (await getWarnings(chatId, userId)) + 1;
       await setWarnings(chatId, userId, warnings);
 
-      if (warnings >= 2) {
+      if (warnings >= getThreshold('MAX_WARNINGS_BEFORE_BAN')) {
         const banResult = await banUser(chatId, userId);
         if (banResult?.ok) {
           await sendMessage(chatId,
@@ -165,8 +166,9 @@ async function handleMessage(message, res) {
           );
           logToAdmin('FORWARD BAN', chatId, userId, username, 'Repeated forwarding');
           await incrementStat(chatId, 'banned');
+          await deleteWarnings(chatId, userId);
         }
-        await deleteWarnings(chatId, userId);
+        // On ban failure, keep the warning count so the next offense retries the ban.
       } else {
         await sendMessage(chatId,
           `⚠️ <b>${escapeHtml(username)}</b> - Forwarding messages is not allowed! Last warning.`,
@@ -215,8 +217,9 @@ async function enforceSpam(chatId, userId, username, score, threadId) {
       logToAdmin('SPAM BAN', chatId, userId, username,
         `Score: ${score}, Warnings: ${warnings}`);
       await incrementStat(chatId, 'banned');
+      await deleteWarnings(chatId, userId);
     }
-    await deleteWarnings(chatId, userId);
+    // On ban failure, keep the warning count so the next offense retries the ban.
     return;
   }
 
@@ -277,6 +280,7 @@ async function handleUserReport(message, res) {
     await deleteMessage(chatId, reportedMessage.message_id);
     const until = Math.floor(Date.now() / 1000) + MUTE_DURATION_2ND;
     const restrictResult = await restrictUser(chatId, reportedUserId, { canSend: false }, until);
+    let actioned = false;
     if (restrictResult?.ok) {
       await sendMessage(chatId,
         `🔇 <b>${escapeHtml(reportedUsername)}</b> restricted for 24 hours.\n` +
@@ -286,6 +290,7 @@ async function handleUserReport(message, res) {
       logToAdmin('REPORT RESTRICT', chatId, reportedUserId, reportedUsername,
         `${reportCount} unique reports, restricted 24h`);
       await incrementStat(chatId, 'muted');
+      actioned = true;
     } else {
       // Fallback to ban if restrict fails
       const banResult = await banUser(chatId, reportedUserId);
@@ -298,10 +303,14 @@ async function handleUserReport(message, res) {
         logToAdmin('REPORT BAN', chatId, reportedUserId, reportedUsername,
           `${reportCount} unique reports, ban (restrict failed)`);
         await incrementStat(chatId, 'banned');
+        actioned = true;
       }
     }
-    clearReports(chatId, reportedUserId);
-    await deleteWarnings(chatId, reportedUserId);
+    // Only clear state if the user was actually actioned; otherwise keep reports for a retry.
+    if (actioned) {
+      clearReports(chatId, reportedUserId);
+      await deleteWarnings(chatId, reportedUserId);
+    }
   } else {
     // Analyze the reported message with user report bonus
     const spamCheck = await isSpam(reportedText, reportedUserId, chatId, reportedUsername, reportedMessage, reportedHasUsername);
@@ -323,9 +332,10 @@ async function handleUserReport(message, res) {
         logToAdmin('REPORT BAN', chatId, reportedUserId, reportedUsername,
           `Reported by ${username}, Score: ${spamCheck.score}`);
         await incrementStat(chatId, 'banned');
+        clearReports(chatId, reportedUserId);
+        await deleteWarnings(chatId, reportedUserId);
       }
-      clearReports(chatId, reportedUserId);
-      await deleteWarnings(chatId, reportedUserId);
+      // On ban failure, keep reports/warnings so the next report retries the action.
     } else if (spamCheck.score >= USER_REPORT_ACTION_THRESHOLD) {
       // Moderate score → delete + mute
       await deleteMessage(chatId, reportedMessage.message_id);
@@ -334,7 +344,7 @@ async function handleUserReport(message, res) {
       const warnings = (await getWarnings(chatId, reportedUserId)) + 1;
       await setWarnings(chatId, reportedUserId, warnings);
 
-      if (warnings >= 2) {
+      if (warnings >= getThreshold('MAX_WARNINGS_BEFORE_BAN')) {
         const banResult = await banUser(chatId, reportedUserId);
         if (banResult?.ok) {
           await sendMessage(chatId,
@@ -345,9 +355,10 @@ async function handleUserReport(message, res) {
           logToAdmin('REPORT BAN', chatId, reportedUserId, reportedUsername,
             `Multiple violations, reported by ${username}`);
           await incrementStat(chatId, 'banned');
+          clearReports(chatId, reportedUserId);
+          await deleteWarnings(chatId, reportedUserId);
         }
-        clearReports(chatId, reportedUserId);
-        await deleteWarnings(chatId, reportedUserId);
+        // On ban failure, keep reports/warnings so the next report retries the action.
       } else {
         const until = Math.floor(Date.now() / 1000) + MUTE_DURATION_1ST;
         await restrictUser(chatId, reportedUserId, { canSend: false }, until);
