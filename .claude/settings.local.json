@@ -19,7 +19,13 @@
       "WebFetch(domain:dayacidbot-82oakq1y0-sidhants-projects-bb2d31ab.vercel.app)",
       "Bash(npm run dev:*)",
       "Bash(vercel:*)",
-      "Bash(do node:*)"
+      "Bash(do node:*)",
+      "Bash(openssl rand:*)",
+      "Bash(vercel env:*)",
+      "mcp__plugin_playwright_playwright__browser_navigate",
+      "mcp__plugin_playwright_playwright__browser_install",
+      "WebFetch(domain:dayacid.hitpoint.app)",
+      "Bash(rm:*)"
     ],
     "deny": []
   }
