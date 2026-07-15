@@ -1,30 +1,52 @@
-export default async function handler(req, res) {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
+// DayaCID Bot — Health Check with Permission Self-Check
 
+import { getMe, getWebhookInfo } from '../lib/telegram.js';
+
+export default async function handler(req, res) {
   let botInfo = null;
   let webhookInfo = null;
   let error = null;
 
   try {
-    // Check bot info
-    const botResponse = await fetch(`https://api.telegram.org/bot${token}/getMe`);
-    botInfo = await botResponse.json();
-
-    // Check webhook info
-    const webhookResponse = await fetch(`https://api.telegram.org/bot${token}/getWebhookInfo`);
-    webhookInfo = await webhookResponse.json();
+    botInfo = await getMe();
+    webhookInfo = await getWebhookInfo();
   } catch (e) {
     error = e.message;
   }
 
+  const webhook = webhookInfo?.result;
+  const allowedUpdates = webhook?.allowed_updates || [];
+  const requiredUpdates = ['message', 'callback_query', 'chat_member'];
+  const missingUpdates = requiredUpdates.filter(u => !allowedUpdates.includes(u));
+
   return res.status(200).json({
     status: botInfo?.ok ? 'connected' : 'disconnected',
     bot: botInfo?.result,
-    webhook: webhookInfo?.result,
+    webhook: {
+      url: webhook?.url,
+      has_custom_certificate: webhook?.has_custom_certificate,
+      pending_update_count: webhook?.pending_update_count,
+      last_error_date: webhook?.last_error_date,
+      last_error_message: webhook?.last_error_message,
+      max_connections: webhook?.max_connections,
+      allowed_updates: allowedUpdates,
+    },
+    checks: {
+      tokenValid: botInfo?.ok || false,
+      webhookSet: Boolean(webhook?.url),
+      allowedUpdatesConfigured: missingUpdates.length === 0,
+      missingUpdates: missingUpdates.length > 0 ? missingUpdates : undefined,
+      kvConfigured: Boolean(process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL),
+      adminChannelConfigured: Boolean(process.env.ADMIN_CHANNEL_ID),
+    },
+    hint: missingUpdates.length > 0
+      ? 'Run GET /api/setup to configure webhook with correct allowed_updates'
+      : undefined,
     error,
     env: {
       hasToken: !!process.env.TELEGRAM_BOT_TOKEN,
-      tokenLength: process.env.TELEGRAM_BOT_TOKEN?.length
+      hasKV: !!(process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL),
+      hasAdminChannel: !!process.env.ADMIN_CHANNEL_ID,
     }
   });
 }
