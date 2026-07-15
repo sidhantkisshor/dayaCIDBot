@@ -1,7 +1,7 @@
 // api/dashboard/action.js
 import { withAuth } from '../../lib/dashboardAuth.js';
 import { banUser, unbanUser } from '../../lib/telegram.js';
-import { setTrusted, deleteWarnings, clearReports, setConfigOverride, getConfigOverrides } from '../../lib/state.js';
+import { setTrusted, deleteWarnings, clearReports, setConfigOverride, getConfigOverrides, getWarnings, isTrusted, getReportCount, getTrustedList } from '../../lib/state.js';
 
 export default withAuth(async (req, res) => {
   if (req.method !== 'POST') {
@@ -11,11 +11,13 @@ export default withAuth(async (req, res) => {
   const { action, chatId, userId, key, value } = req.body || {};
 
   // Validate numeric IDs for user-targeting actions
-  const ALLOWED_CONFIG_KEYS = ['SPAM_THRESHOLD', 'INSTANT_BAN_THRESHOLD', 'MAX_WARNINGS_BEFORE_BAN'];
+  const ALLOWED_CONFIG_KEYS = ['SPAM_THRESHOLD', 'INSTANT_BAN_THRESHOLD', 'MAX_WARNINGS_BEFORE_BAN', 'FLOOD_THRESHOLD', 'BURST_THRESHOLD'];
   const CONFIG_KEY_RANGES = {
     SPAM_THRESHOLD: [1, 20],
     INSTANT_BAN_THRESHOLD: [1, 30],
     MAX_WARNINGS_BEFORE_BAN: [1, 10],
+    FLOOD_THRESHOLD: [2, 20],
+    BURST_THRESHOLD: [2, 10],
   };
   function validateIds() {
     const cid = Number(chatId);
@@ -81,6 +83,24 @@ export default withAuth(async (req, res) => {
     case 'getConfig': {
       const config = await getConfigOverrides();
       return res.status(200).json({ ok: true, config });
+    }
+
+    case 'getUser': {
+      const ids = validateIds();
+      if (!ids) return res.status(400).json({ error: 'Valid numeric chatId and userId required' });
+      const [warnings, trusted] = await Promise.all([
+        getWarnings(ids.cid, ids.uid),
+        isTrusted(ids.cid, ids.uid),
+      ]);
+      // reports is in-memory + per-instance, so it's best-effort (may read 0 on a
+      // cold serverless instance even if reports exist elsewhere).
+      const reports = getReportCount(ids.cid, ids.uid);
+      return res.status(200).json({ ok: true, action: 'getUser', warnings, trusted, reports });
+    }
+
+    case 'listTrusted': {
+      const trusted = await getTrustedList();
+      return res.status(200).json({ ok: true, action: 'listTrusted', trusted });
     }
 
     default:

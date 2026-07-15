@@ -33,9 +33,9 @@ export default withAuth(async (req, res) => {
     for (const chatDaily of allDaily) {
       for (const day of chatDaily) {
         if (!dateMap[day.date]) {
-          dateMap[day.date] = { date: day.date, deleted: 0, banned: 0, muted: 0, captchaPassed: 0, captchaFailed: 0 };
+          dateMap[day.date] = { date: day.date, deleted: 0, banned: 0, warned: 0, muted: 0, captchaPassed: 0, captchaFailed: 0 };
         }
-        for (const k of ['deleted', 'banned', 'muted', 'captchaPassed', 'captchaFailed']) {
+        for (const k of ['deleted', 'banned', 'warned', 'muted', 'captchaPassed', 'captchaFailed']) {
           dateMap[day.date][k] += day[k] || 0;
         }
       }

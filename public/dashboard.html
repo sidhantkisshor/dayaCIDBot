@@ -349,6 +349,7 @@
   .stat-card.green::before { background: var(--green); }
   .stat-card.yellow::before { background: var(--yellow); }
   .stat-card.purple::before { background: var(--purple); }
+  .stat-card.cyan::before { background: var(--cyan); }
 
   .stat-label {
     font-size: 10px;
@@ -372,6 +373,7 @@
   .stat-card.green .stat-value { color: var(--green); }
   .stat-card.yellow .stat-value { color: var(--yellow); }
   .stat-card.purple .stat-value { color: var(--purple); }
+  .stat-card.cyan .stat-value { color: var(--cyan); }
 
   .stat-sub {
     font-size: 11px;
@@ -694,6 +696,181 @@
 
   @keyframes slideUp { from { transform: translateY(10px); opacity: 0; } }
   @keyframes fadeOut { to { opacity: 0; } }
+
+  /* ── FOCUS VISIBILITY (a11y) ── */
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible {
+    outline: 2px solid var(--cyan);
+    outline-offset: 2px;
+  }
+
+  /* ── SKELETON LOADING ── */
+  .skeleton {
+    color: transparent !important;
+    border-radius: 4px;
+    background: linear-gradient(90deg, var(--bg-2), var(--bg-3), var(--bg-2));
+    background-size: 200% 100%;
+    animation: shimmer 1.2s ease-in-out infinite;
+    min-width: 36px;
+    display: inline-block;
+  }
+  .stat-value.skeleton { min-height: 24px; }
+  @keyframes shimmer { to { background-position: -200% 0; } }
+
+  /* ── PANEL ERROR / STATUS LINES ── */
+  .panel-error {
+    display: none;
+    color: var(--red);
+    background: var(--red-dim);
+    border: 1px solid var(--red-dim);
+    border-radius: var(--radius);
+    padding: 8px 12px;
+    font-size: 11px;
+    margin-bottom: 12px;
+  }
+  .panel-error.show { display: block; }
+  .panel-note {
+    color: var(--text-2);
+    font-size: 10px;
+    margin-top: 6px;
+    line-height: 1.4;
+  }
+
+  /* ── HEALTH WARNING PILL ── */
+  .health-item.warn .status-dot { background: var(--orange); box-shadow: 0 0 8px var(--orange); }
+  #h-warn-text { color: var(--orange); }
+
+  /* ── PER-CHAT BREAKDOWN TABLE ── */
+  .breakdown {
+    margin-top: 4px;
+    margin-bottom: 20px;
+  }
+  .breakdown-wrap { overflow-x: auto; }
+  table.breakdown-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+  }
+  table.breakdown-table th {
+    text-align: right;
+    color: var(--text-2);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 9px;
+    font-weight: 600;
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  table.breakdown-table th:first-child { text-align: left; }
+  table.breakdown-table td {
+    text-align: right;
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-1);
+    white-space: nowrap;
+  }
+  table.breakdown-table td.chat-name-cell {
+    text-align: left;
+    color: var(--text-0);
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  table.breakdown-table tbody tr:hover { background: var(--bg-1); }
+
+  /* ── CONFIG: OVERRIDDEN BADGE + RESET ── */
+  .config-flag {
+    font-size: 9px;
+    color: var(--yellow);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-left: 6px;
+    visibility: hidden;
+  }
+  .config-flag.show { visibility: visible; }
+  .config-reset {
+    padding: 4px 8px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-2);
+    font-family: var(--mono);
+    font-size: 10px;
+    cursor: pointer;
+  }
+  .config-reset:hover { color: var(--text-0); border-color: var(--border-bright); }
+
+  /* ── USER LOOKUP RESULT ── */
+  .lookup-result {
+    display: none;
+    margin-top: 8px;
+    padding: 10px 12px;
+    background: var(--bg-1);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 12px;
+  }
+  .lookup-result.show { display: block; }
+  .lookup-result .lk-row { display: flex; justify-content: space-between; padding: 3px 0; }
+  .lookup-result .lk-row span:first-child { color: var(--text-2); }
+  .lk-badge { font-weight: 600; }
+  .lk-badge.yes { color: var(--green); }
+  .lk-badge.no { color: var(--text-1); }
+
+  /* ── CONFIRM MODAL ── */
+  .modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal-backdrop.show { display: flex; }
+  .modal-box {
+    background: var(--bg-1);
+    border: 1px solid var(--border-bright);
+    border-radius: var(--radius);
+    padding: 24px;
+    width: 100%;
+    max-width: 360px;
+    animation: slideUp 0.2s ease;
+  }
+  .modal-title {
+    font-family: var(--sans);
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--text-0);
+  }
+  .modal-msg { color: var(--text-1); font-size: 12px; margin-bottom: 20px; line-height: 1.5; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+  .modal-btn {
+    padding: 8px 16px;
+    border-radius: var(--radius);
+    font-family: var(--mono);
+    font-size: 12px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--bg-2);
+    color: var(--text-1);
+    transition: all 0.15s;
+  }
+  .modal-btn:hover { background: var(--bg-3); color: var(--text-0); }
+  .modal-btn.danger { color: var(--red); border-color: var(--red-dim); }
+  .modal-btn.danger:hover { background: var(--red-dim); }
+
+  /* ── RESPONSIVE FIXES ── */
+  .health-bar { flex-wrap: wrap; gap: 16px 24px; }
+  @media (max-width: 640px) {
+    .activity-item { grid-template-columns: 52px auto 1fr; }
+    .activity-actions { grid-column: 1 / -1; justify-content: flex-end; margin-top: 4px; }
+    .chat-item .chat-name { max-width: 55vw; }
+  }
 </style>
 </head>
 <body>
@@ -717,9 +894,9 @@
       <div class="topbar-brand"><span>//</span> DayaCID</div>
     </div>
     <div class="topbar-right">
-      <span class="refresh-info" id="refresh-info">Refreshing...</span>
-      <button class="btn-sm" onclick="refreshAll()">Refresh</button>
-      <button class="btn-sm btn-danger" onclick="doLogout()">Logout</button>
+      <span class="refresh-info" id="refresh-info" role="status" aria-live="polite">Refreshing...</span>
+      <button class="btn-sm" onclick="refreshAll()" aria-label="Refresh dashboard data">Refresh</button>
+      <button class="btn-sm btn-danger" onclick="doLogout()" aria-label="Log out">Logout</button>
     </div>
   </div>
 
@@ -748,6 +925,10 @@
       <span class="label">Pending</span>
       <span id="h-pending">0</span>
     </div>
+    <div class="health-item warn" id="h-warn-item" style="display:none">
+      <span class="status-dot"></span>
+      <span id="h-warn-text"></span>
+    </div>
   </div>
 
   <!-- Main Grid -->
@@ -759,14 +940,17 @@
         <div class="panel-title"><span class="icon">&#9632;</span> Statistics</div>
         <span class="panel-badge" style="background:var(--cyan-dim);color:var(--cyan)">Live</span>
       </div>
+      <div class="panel-error" id="stats-error" role="alert"></div>
       <div class="stats-grid" id="stats-grid">
-        <div class="stat-card red"><div class="stat-label">Deleted</div><div class="stat-value" id="s-deleted">--</div></div>
-        <div class="stat-card orange"><div class="stat-label">Banned</div><div class="stat-value" id="s-banned">--</div></div>
-        <div class="stat-card yellow"><div class="stat-label">Muted</div><div class="stat-value" id="s-muted">--</div></div>
-        <div class="stat-card green"><div class="stat-label">Captcha Pass</div><div class="stat-value" id="s-captcha-pass">--</div></div>
-        <div class="stat-card blue"><div class="stat-label">Captcha Fail</div><div class="stat-value" id="s-captcha-fail">--</div></div>
-        <div class="stat-card purple"><div class="stat-label">Pass Rate</div><div class="stat-value" id="s-pass-rate">--</div><div class="stat-sub">%</div></div>
+        <div class="stat-card red"><div class="stat-label">Deleted</div><div class="stat-value skeleton" id="s-deleted"></div></div>
+        <div class="stat-card orange"><div class="stat-label">Banned</div><div class="stat-value skeleton" id="s-banned"></div></div>
+        <div class="stat-card yellow"><div class="stat-label">Muted</div><div class="stat-value skeleton" id="s-muted"></div></div>
+        <div class="stat-card cyan"><div class="stat-label">Warned</div><div class="stat-value skeleton" id="s-warned"></div></div>
+        <div class="stat-card green"><div class="stat-label">Captcha Pass</div><div class="stat-value skeleton" id="s-captcha-pass"></div></div>
+        <div class="stat-card blue"><div class="stat-label">Captcha Fail</div><div class="stat-value skeleton" id="s-captcha-fail"></div></div>
+        <div class="stat-card purple"><div class="stat-label">Pass Rate</div><div class="stat-value skeleton" id="s-pass-rate"></div><div class="stat-sub">%</div></div>
       </div>
+      <div class="breakdown" id="breakdown"></div>
       <div class="chart-wrap"><canvas id="trend-chart"></canvas></div>
     </div>
 
@@ -776,7 +960,8 @@
         <div class="panel-title"><span class="icon">&#9654;</span> Activity Feed</div>
         <span class="panel-badge" style="background:var(--green-dim);color:var(--green)" id="activity-count">0 events</span>
       </div>
-      <div class="activity-list" id="activity-list">
+      <div class="panel-error" id="activity-error" role="alert"></div>
+      <div class="activity-list" id="activity-list" aria-live="polite">
         <div class="activity-empty">No activity recorded yet</div>
       </div>
     </div>
@@ -799,44 +984,99 @@
           <button class="mgmt-btn trust" onclick="doAction('trust')">Trust</button>
           <button class="mgmt-btn" onclick="doAction('untrust')">Untrust</button>
         </div>
-        <div class="mgmt-result" id="action-result"></div>
+        <div class="mgmt-result" id="action-result" role="status" aria-live="polite"></div>
+      </div>
+
+      <div class="mgmt-section">
+        <div class="mgmt-label">User Lookup</div>
+        <div class="mgmt-row">
+          <button class="mgmt-btn" onclick="lookupUser()">Look up current state</button>
+        </div>
+        <div class="lookup-result" id="lookup-result">
+          <div class="lk-row"><span>Warnings</span><span class="lk-badge" id="lk-warnings">0</span></div>
+          <div class="lk-row"><span>Trusted</span><span class="lk-badge" id="lk-trusted">no</span></div>
+          <div class="lk-row"><span>Reports</span><span class="lk-badge" id="lk-reports">0</span></div>
+          <div class="panel-note">Uses the Chat ID / User ID above. Report count is best-effort (in-memory, per serverless instance).</div>
+        </div>
       </div>
 
       <div class="mgmt-section">
         <div class="mgmt-label">Thresholds</div>
         <div class="config-row">
-          <span class="config-label">Spam Threshold</span>
+          <span class="config-label">Spam Threshold<span class="config-flag" id="flag-SPAM_THRESHOLD">overridden</span></span>
           <div class="config-value">
-            <input type="number" id="cfg-spam" min="1" max="20" value="6">
+            <input type="number" id="cfg-spam" min="1" max="20" disabled aria-label="Spam threshold">
             <button class="config-save" onclick="saveConfig('SPAM_THRESHOLD', 'cfg-spam')">Save</button>
+            <button class="config-reset" title="Reset to default" onclick="resetConfig('SPAM_THRESHOLD', 'cfg-spam')">Reset</button>
           </div>
         </div>
         <div class="config-row">
-          <span class="config-label">Instant Ban Threshold</span>
+          <span class="config-label">Instant Ban Threshold<span class="config-flag" id="flag-INSTANT_BAN_THRESHOLD">overridden</span></span>
           <div class="config-value">
-            <input type="number" id="cfg-ban" min="1" max="30" value="10">
+            <input type="number" id="cfg-ban" min="1" max="30" disabled aria-label="Instant ban threshold">
             <button class="config-save" onclick="saveConfig('INSTANT_BAN_THRESHOLD', 'cfg-ban')">Save</button>
+            <button class="config-reset" title="Reset to default" onclick="resetConfig('INSTANT_BAN_THRESHOLD', 'cfg-ban')">Reset</button>
           </div>
         </div>
         <div class="config-row">
-          <span class="config-label">Max Warnings Before Ban</span>
+          <span class="config-label">Max Warnings Before Ban<span class="config-flag" id="flag-MAX_WARNINGS_BEFORE_BAN">overridden</span></span>
           <div class="config-value">
-            <input type="number" id="cfg-warnings" min="1" max="10" value="3">
+            <input type="number" id="cfg-warnings" min="1" max="10" disabled aria-label="Max warnings before ban">
             <button class="config-save" onclick="saveConfig('MAX_WARNINGS_BEFORE_BAN', 'cfg-warnings')">Save</button>
+            <button class="config-reset" title="Reset to default" onclick="resetConfig('MAX_WARNINGS_BEFORE_BAN', 'cfg-warnings')">Reset</button>
           </div>
         </div>
+        <div class="config-row">
+          <span class="config-label">Flood Threshold<span class="config-flag" id="flag-FLOOD_THRESHOLD">overridden</span></span>
+          <div class="config-value">
+            <input type="number" id="cfg-flood" min="2" max="20" disabled aria-label="Flood threshold">
+            <button class="config-save" onclick="saveConfig('FLOOD_THRESHOLD', 'cfg-flood')">Save</button>
+            <button class="config-reset" title="Reset to default" onclick="resetConfig('FLOOD_THRESHOLD', 'cfg-flood')">Reset</button>
+          </div>
+        </div>
+        <div class="config-row">
+          <span class="config-label">Burst Threshold<span class="config-flag" id="flag-BURST_THRESHOLD">overridden</span></span>
+          <div class="config-value">
+            <input type="number" id="cfg-burst" min="2" max="10" disabled aria-label="Burst threshold">
+            <button class="config-save" onclick="saveConfig('BURST_THRESHOLD', 'cfg-burst')">Save</button>
+            <button class="config-reset" title="Reset to default" onclick="resetConfig('BURST_THRESHOLD', 'cfg-burst')">Reset</button>
+          </div>
+        </div>
+        <div class="panel-note">Defaults: Spam 6 · Instant Ban 10 · Max Warnings 3 · Flood 4 · Burst 3. Overrides apply within ~60s.</div>
       </div>
     </div>
 
-    <!-- Panel 4: Active Chats -->
+    <!-- Panel 4: Active Chats + Trusted Users -->
     <div class="panel">
       <div class="panel-header">
         <div class="panel-title"><span class="icon">&#9673;</span> Active Chats</div>
         <span class="panel-badge" style="background:var(--bg-3);color:var(--text-1)" id="chat-count">0</span>
       </div>
+      <div class="panel-error" id="health-error" role="alert"></div>
       <div class="chat-list" id="chat-list">
         <div class="activity-empty">No chats registered yet</div>
       </div>
+
+      <div class="mgmt-section" style="margin-top:20px">
+        <div class="mgmt-label">Trusted Users</div>
+        <div class="panel-error" id="trusted-error" role="alert"></div>
+        <div class="chat-list" id="trusted-list">
+          <div class="activity-empty">No trusted users indexed yet</div>
+        </div>
+        <div class="panel-note">Only users trusted after this feature shipped are listed here.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── CONFIRM MODAL ── -->
+<div class="modal-backdrop" id="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+  <div class="modal-box">
+    <div class="modal-title" id="confirm-title">Confirm</div>
+    <div class="modal-msg" id="confirm-msg"></div>
+    <div class="modal-actions">
+      <button class="modal-btn" id="confirm-cancel">Cancel</button>
+      <button class="modal-btn danger" id="confirm-ok">Confirm</button>
     </div>
   </div>
 </div>
@@ -848,6 +1088,71 @@ let trendChart = null;
 let refreshInterval = null;
 
 const API_BASE = '/api/dashboard';
+
+// Server-side DEFAULTS mirror (lib/config.js) — used for "overridden" flags + reset.
+const CONFIG_DEFAULTS = {
+  SPAM_THRESHOLD: 6,
+  INSTANT_BAN_THRESHOLD: 10,
+  MAX_WARNINGS_BEFORE_BAN: 3,
+  FLOOD_THRESHOLD: 4,
+  BURST_THRESHOLD: 3,
+};
+const CONFIG_INPUTS = {
+  SPAM_THRESHOLD: 'cfg-spam',
+  INSTANT_BAN_THRESHOLD: 'cfg-ban',
+  MAX_WARNINGS_BEFORE_BAN: 'cfg-warnings',
+  FLOOD_THRESHOLD: 'cfg-flood',
+  BURST_THRESHOLD: 'cfg-burst',
+};
+
+// ── UI helpers ──
+function setPanelError(id, msg) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (msg) { el.textContent = msg; el.classList.add('show'); }
+  else { el.textContent = ''; el.classList.remove('show'); }
+}
+
+function setStat(id, val) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.remove('skeleton');
+  el.textContent = val;
+}
+
+// In-app confirm dialog — returns a Promise<boolean>, replacing native confirm().
+function confirmModal(message, { title = 'Confirm', okLabel = 'Confirm' } = {}) {
+  return new Promise(resolve => {
+    const backdrop = document.getElementById('confirm-modal');
+    const okBtn = document.getElementById('confirm-ok');
+    const cancelBtn = document.getElementById('confirm-cancel');
+    document.getElementById('confirm-title').textContent = title;
+    document.getElementById('confirm-msg').textContent = message;
+    okBtn.textContent = okLabel;
+
+    function cleanup(result) {
+      backdrop.classList.remove('show');
+      okBtn.removeEventListener('click', onOk);
+      cancelBtn.removeEventListener('click', onCancel);
+      backdrop.removeEventListener('click', onBackdrop);
+      document.removeEventListener('keydown', onKey);
+      resolve(result);
+    }
+    function onOk() { cleanup(true); }
+    function onCancel() { cleanup(false); }
+    function onBackdrop(e) { if (e.target === backdrop) cleanup(false); }
+    function onKey(e) {
+      if (e.key === 'Escape') cleanup(false);
+      else if (e.key === 'Enter') cleanup(true);
+    }
+    okBtn.addEventListener('click', onOk);
+    cancelBtn.addEventListener('click', onCancel);
+    backdrop.addEventListener('click', onBackdrop);
+    document.addEventListener('keydown', onKey);
+    backdrop.classList.add('show');
+    okBtn.focus();
+  });
+}
 
 // ── Auth ──
 function dashFetch(path, opts = {}) {
@@ -915,19 +1220,19 @@ function showDashboard() {
 // ── Refresh All ──
 async function refreshAll() {
   document.getElementById('refresh-info').textContent = 'Refreshing...';
-  try {
-    await Promise.all([loadHealth(), loadStats(), loadActivity(), loadConfig()]);
-    const now = new Date().toLocaleTimeString();
-    document.getElementById('refresh-info').textContent = `Updated ${now}`;
-  } catch {
-    document.getElementById('refresh-info').textContent = 'Refresh failed';
-  }
+  // Each loader owns its panel's error state and does not throw, so one failing
+  // panel doesn't blank the others. allSettled lets them all complete.
+  await Promise.allSettled([loadHealth(), loadStats(), loadActivity(), loadConfig(), loadTrusted()]);
+  const now = new Date().toLocaleTimeString();
+  document.getElementById('refresh-info').textContent = `Updated ${now}`;
 }
 
 // ── Health ──
+let kvConnected = true;
 async function loadHealth() {
   try {
     const d = await dashFetch('/health');
+    setPanelError('health-error', '');
     setDot('h-bot', d.bot?.status === 'online');
     document.getElementById('h-bot-text').textContent = d.bot?.status === 'online'
       ? (d.bot?.info?.username || 'online') : 'offline';
@@ -937,15 +1242,29 @@ async function loadHealth() {
     document.getElementById('h-webhook-text').textContent = whOk
       ? `${d.webhook.pendingUpdates} pending` : (d.webhook?.lastError || 'not set');
 
-    setDot('h-kv', d.kv?.status === 'connected');
+    kvConnected = d.kv?.status === 'connected';
+    setDot('h-kv', kvConnected);
     document.getElementById('h-kv-text').textContent = d.kv?.status || 'unknown';
 
     document.getElementById('h-chats').textContent = d.activeChats || 0;
     document.getElementById('h-pending').textContent = d.webhook?.pendingUpdates || 0;
 
+    // Surface a warning pill for a webhook last-error or a non-connected KV store.
+    const warnItem = document.getElementById('h-warn-item');
+    const warnText = document.getElementById('h-warn-text');
+    let warn = '';
+    if (d.webhook?.lastError) warn = `webhook: ${d.webhook.lastError}`;
+    else if (d.kv?.status && d.kv.status !== 'connected') {
+      warn = d.kv.status === 'not_configured' ? 'KV not configured' : `KV ${d.kv.status}`;
+    }
+    if (warn) { warnText.textContent = warn; warnItem.style.display = ''; }
+    else { warnItem.style.display = 'none'; }
+
     // Update chat list
     renderChatList(d.activeChatList || {});
-  } catch { /* handled */ }
+  } catch (e) {
+    setPanelError('health-error', `Health check failed: ${e.message}`);
+  }
 }
 
 function setDot(id, ok) {
@@ -957,16 +1276,64 @@ function setDot(id, ok) {
 async function loadStats() {
   try {
     const d = await dashFetch('/stats');
+    setPanelError('stats-error', '');
     const t = d.totals || {};
-    document.getElementById('s-deleted').textContent = formatNum(t.deleted || 0);
-    document.getElementById('s-banned').textContent = formatNum(t.banned || 0);
-    document.getElementById('s-muted').textContent = formatNum(t.muted || 0);
-    document.getElementById('s-captcha-pass').textContent = formatNum(t.captchaPassed || 0);
-    document.getElementById('s-captcha-fail').textContent = formatNum(t.captchaFailed || 0);
-    document.getElementById('s-pass-rate').textContent = d.captchaPassRate != null ? d.captchaPassRate : '--';
+    setStat('s-deleted', formatNum(t.deleted || 0));
+    setStat('s-banned', formatNum(t.banned || 0));
+    setStat('s-muted', formatNum(t.muted || 0));
+    setStat('s-warned', formatNum(t.warned || 0));
+    setStat('s-captcha-pass', formatNum(t.captchaPassed || 0));
+    setStat('s-captcha-fail', formatNum(t.captchaFailed || 0));
+    setStat('s-pass-rate', d.captchaPassRate != null ? d.captchaPassRate : '--');
 
+    // If KV is off, all stats are zeros — tell the user rather than implying "no activity".
+    if (!kvConnected) {
+      setPanelError('stats-error', 'KV not configured — statistics are unavailable (showing zeros).');
+    }
+
+    renderBreakdown(d.perChat || {});
     updateChart(d.daily || []);
-  } catch { /* handled */ }
+  } catch (e) {
+    // Clear skeletons so they don't shimmer forever, then surface the error.
+    for (const id of ['s-deleted','s-banned','s-muted','s-warned','s-captcha-pass','s-captcha-fail','s-pass-rate']) setStat(id, '—');
+    setPanelError('stats-error', `Stats failed to load: ${e.message}`);
+  }
+}
+
+// Render the per-chat breakdown table from stats.perChat (data already returned).
+function renderBreakdown(perChat) {
+  const container = document.getElementById('breakdown');
+  const entries = Object.entries(perChat);
+  if (entries.length === 0) { container.innerHTML = ''; return; }
+  // Sort by total enforcement volume, busiest first.
+  entries.sort((a, b) => {
+    const vol = s => (s.deleted||0)+(s.banned||0)+(s.muted||0)+(s.warned||0);
+    return vol(b[1]) - vol(a[1]);
+  });
+  const rows = entries.map(([id, s]) => {
+    const passRate = (s.captchaPassed + s.captchaFailed) > 0
+      ? Math.round((s.captchaPassed / (s.captchaPassed + s.captchaFailed)) * 100) + '%'
+      : '—';
+    const title = s.title || `Chat ${id}`;
+    return `<tr>
+      <td class="chat-name-cell" title="${escAttr(title)}">${esc(title)}</td>
+      <td>${formatNum(s.deleted||0)}</td>
+      <td>${formatNum(s.banned||0)}</td>
+      <td>${formatNum(s.muted||0)}</td>
+      <td>${formatNum(s.warned||0)}</td>
+      <td>${passRate}</td>
+    </tr>`;
+  }).join('');
+  container.innerHTML = `
+    <div class="mgmt-label" style="margin-bottom:8px">Per-Chat Breakdown</div>
+    <div class="breakdown-wrap">
+      <table class="breakdown-table">
+        <thead><tr>
+          <th>Chat</th><th>Del</th><th>Ban</th><th>Mute</th><th>Warn</th><th>Pass</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
 }
 
 function formatNum(n) {
@@ -990,6 +1357,7 @@ function initChart() {
         { label: 'Deleted', data: [], borderColor: '#ff3b5c', backgroundColor: '#ff3b5c22', fill: true, tension: 0.3, borderWidth: 2, pointRadius: 3 },
         { label: 'Banned', data: [], borderColor: '#ff8a2b', backgroundColor: '#ff8a2b22', fill: true, tension: 0.3, borderWidth: 2, pointRadius: 3 },
         { label: 'Muted', data: [], borderColor: '#ffd93b', backgroundColor: '#ffd93b11', fill: true, tension: 0.3, borderWidth: 2, pointRadius: 3 },
+        { label: 'Warned', data: [], borderColor: '#3bfff5', backgroundColor: '#3bfff511', fill: true, tension: 0.3, borderWidth: 2, pointRadius: 3 },
       ],
     },
     options: {
@@ -1019,11 +1387,19 @@ function initChart() {
 }
 
 function updateChart(daily) {
-  if (!trendChart || !daily.length) return;
+  if (!trendChart) return;
+  if (!daily.length) {
+    // Clear stale points instead of leaving the previous dataset on screen.
+    trendChart.data.labels = [];
+    trendChart.data.datasets.forEach(ds => { ds.data = []; });
+    trendChart.update();
+    return;
+  }
   trendChart.data.labels = daily.map(d => d.date.slice(5)); // MM-DD
   trendChart.data.datasets[0].data = daily.map(d => d.deleted || 0);
   trendChart.data.datasets[1].data = daily.map(d => d.banned || 0);
   trendChart.data.datasets[2].data = daily.map(d => d.muted || 0);
+  trendChart.data.datasets[3].data = daily.map(d => d.warned || 0);
   trendChart.update();
 }
 
@@ -1031,12 +1407,14 @@ function updateChart(daily) {
 async function loadActivity() {
   try {
     const d = await dashFetch('/activity?limit=100');
+    setPanelError('activity-error', '');
     const list = d.activity || [];
     document.getElementById('activity-count').textContent = `${list.length} events`;
     const container = document.getElementById('activity-list');
 
     if (list.length === 0) {
-      container.innerHTML = '<div class="activity-empty">No activity recorded yet</div>';
+      const msg = kvConnected ? 'No activity recorded yet' : 'KV not configured — activity log unavailable';
+      container.innerHTML = `<div class="activity-empty">${msg}</div>`;
       return;
     }
 
@@ -1076,6 +1454,7 @@ async function loadActivity() {
         const banBtn = document.createElement('button');
         banBtn.className = 'act-btn act-ban';
         banBtn.title = 'Ban user';
+        banBtn.setAttribute('aria-label', `Ban ${item.username || item.userId}`);
         banBtn.textContent = 'BAN';
         banBtn.dataset.action = 'ban';
         banBtn.dataset.chatId = String(Number(item.chatId));
@@ -1087,6 +1466,7 @@ async function loadActivity() {
         const unbanBtn = document.createElement('button');
         unbanBtn.className = 'act-btn act-unban';
         unbanBtn.title = 'Unban user';
+        unbanBtn.setAttribute('aria-label', `Unban ${item.username || item.userId}`);
         unbanBtn.textContent = 'UNBAN';
         unbanBtn.dataset.action = 'unban';
         unbanBtn.dataset.chatId = String(Number(item.chatId));
@@ -1100,7 +1480,9 @@ async function loadActivity() {
 
       container.appendChild(row);
     }
-  } catch { /* handled */ }
+  } catch (e) {
+    setPanelError('activity-error', `Activity failed to load: ${e.message}`);
+  }
 }
 
 function onQuickActionClick(e) {
@@ -1161,7 +1543,7 @@ async function doAction(action) {
     return;
   }
 
-  if (action === 'ban' && !confirm(`Ban user ${userId} from chat ${chatId}?`)) return;
+  if (action === 'ban' && !await confirmModal(`Ban user ${userId} from chat ${chatId}?`, { title: 'Ban user', okLabel: 'Ban' })) return;
 
   try {
     const d = await dashFetch('/action', {
@@ -1171,6 +1553,8 @@ async function doAction(action) {
     result.className = `mgmt-result ${d.ok ? 'ok' : 'err'}`;
     result.textContent = d.ok ? `${action} successful` : `${action} failed`;
     showToast(`${action}: ${d.ok ? 'OK' : 'FAIL'}`);
+    // Trust/untrust affect the trusted list; ban/unban affect stats + activity.
+    if (d.ok) refreshAll();
   } catch (e) {
     result.className = 'mgmt-result err';
     result.textContent = e.message;
@@ -1179,7 +1563,7 @@ async function doAction(action) {
 
 // ── Quick Action (from activity feed) ──
 async function quickAction(action, chatId, userId, username, btn) {
-  if (action === 'ban' && !confirm(`Ban ${username || userId} from chat ${chatId}?`)) return;
+  if (action === 'ban' && !await confirmModal(`Ban ${username || userId} from chat ${chatId}?`, { title: 'Ban user', okLabel: 'Ban' })) return;
   btn.disabled = true;
   try {
     const d = await dashFetch('/action', {
@@ -1188,8 +1572,8 @@ async function quickAction(action, chatId, userId, username, btn) {
     });
     showToast(`${action.toUpperCase()} ${username || userId}: ${d.ok ? 'OK' : 'FAIL'}`);
     if (d.ok) {
-      btn.textContent = 'DONE';
-      btn.style.opacity = '0.5';
+      // Re-fetch so stats + feed reflect reality instead of a stale "DONE" label.
+      refreshAll();
     } else {
       btn.disabled = false;
     }
@@ -1207,10 +1591,18 @@ async function loadConfig() {
       body: JSON.stringify({ action: 'getConfig' }),
     });
     const cfg = d.config || {};
-    if (cfg.SPAM_THRESHOLD != null) document.getElementById('cfg-spam').value = cfg.SPAM_THRESHOLD;
-    if (cfg.INSTANT_BAN_THRESHOLD != null) document.getElementById('cfg-ban').value = cfg.INSTANT_BAN_THRESHOLD;
-    if (cfg.MAX_WARNINGS_BEFORE_BAN != null) document.getElementById('cfg-warnings').value = cfg.MAX_WARNINGS_BEFORE_BAN;
-  } catch { /* handled */ }
+    // Each input shows the override if present, otherwise the built-in default.
+    for (const [key, inputId] of Object.entries(CONFIG_INPUTS)) {
+      const input = document.getElementById(inputId);
+      const override = cfg[key];
+      const effective = (override != null) ? override : CONFIG_DEFAULTS[key];
+      input.value = effective;
+      input.disabled = false;
+      // Flag values that differ from the default.
+      const flag = document.getElementById(`flag-${key}`);
+      if (flag) flag.classList.toggle('show', override != null && override !== CONFIG_DEFAULTS[key]);
+    }
+  } catch { /* config panel is non-critical; inputs stay at defaults */ }
 }
 
 async function saveConfig(key, inputId) {
@@ -1221,8 +1613,115 @@ async function saveConfig(key, inputId) {
       body: JSON.stringify({ action: 'setConfig', key, value }),
     });
     showToast(`${key} = ${value}`);
+    const flag = document.getElementById(`flag-${key}`);
+    if (flag) flag.classList.toggle('show', value !== CONFIG_DEFAULTS[key]);
   } catch (e) {
     showToast(`Failed: ${e.message}`);
+  }
+}
+
+// Reset a config key back to its built-in default (persists the default as the override).
+async function resetConfig(key, inputId) {
+  const def = CONFIG_DEFAULTS[key];
+  document.getElementById(inputId).value = def;
+  await saveConfig(key, inputId);
+}
+
+// ── User Lookup ──
+async function lookupUser() {
+  const chatId = document.getElementById('action-chat').value.trim();
+  const userId = document.getElementById('action-user').value.trim();
+  const box = document.getElementById('lookup-result');
+  const result = document.getElementById('action-result');
+  if (!chatId || !userId) {
+    result.className = 'mgmt-result err';
+    result.textContent = 'Chat ID and User ID required for lookup';
+    return;
+  }
+  try {
+    const d = await dashFetch('/action', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'getUser', chatId: Number(chatId), userId: Number(userId) }),
+    });
+    document.getElementById('lk-warnings').textContent = d.warnings ?? 0;
+    document.getElementById('lk-reports').textContent = d.reports ?? 0;
+    const tr = document.getElementById('lk-trusted');
+    tr.textContent = d.trusted ? 'yes' : 'no';
+    tr.className = `lk-badge ${d.trusted ? 'yes' : 'no'}`;
+    box.classList.add('show');
+    result.className = 'mgmt-result ok';
+    result.textContent = 'Lookup complete';
+  } catch (e) {
+    result.className = 'mgmt-result err';
+    result.textContent = e.message;
+  }
+}
+
+// ── Trusted Users ──
+async function loadTrusted() {
+  try {
+    const d = await dashFetch('/action', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'listTrusted' }),
+    });
+    setPanelError('trusted-error', '');
+    renderTrustedList(d.trusted || []);
+  } catch (e) {
+    setPanelError('trusted-error', `Trusted list failed: ${e.message}`);
+  }
+}
+
+function renderTrustedList(list) {
+  const container = document.getElementById('trusted-list');
+  if (!list.length) {
+    const msg = kvConnected ? 'No trusted users indexed yet' : 'KV not configured — trusted list unavailable';
+    container.innerHTML = `<div class="activity-empty">${msg}</div>`;
+    return;
+  }
+  container.innerHTML = '';
+  for (const u of list) {
+    const row = document.createElement('div');
+    row.className = 'chat-item';
+
+    const name = document.createElement('span');
+    name.className = 'chat-name';
+    name.title = u.chatTitle || '';
+    name.textContent = u.chatTitle ? `${u.chatTitle} · ${u.userId}` : `User ${u.userId}`;
+    row.appendChild(name);
+
+    const actions = document.createElement('span');
+    actions.className = 'activity-actions';
+    const idSpan = document.createElement('span');
+    idSpan.className = 'chat-id';
+    idSpan.textContent = u.chatId;
+    actions.appendChild(idSpan);
+
+    const btn = document.createElement('button');
+    btn.className = 'act-btn act-ban';
+    btn.textContent = 'UNTRUST';
+    btn.setAttribute('aria-label', `Untrust user ${u.userId}`);
+    btn.addEventListener('click', () => untrustFromList(u.chatId, u.userId, btn));
+    actions.appendChild(btn);
+
+    row.appendChild(actions);
+    container.appendChild(row);
+  }
+}
+
+async function untrustFromList(chatId, userId, btn) {
+  if (!await confirmModal(`Untrust user ${userId}?`, { title: 'Untrust user', okLabel: 'Untrust' })) return;
+  btn.disabled = true;
+  try {
+    const d = await dashFetch('/action', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'untrust', chatId: Number(chatId), userId: Number(userId) }),
+    });
+    showToast(`UNTRUST ${userId}: ${d.ok ? 'OK' : 'FAIL'}`);
+    if (d.ok) loadTrusted();
+    else btn.disabled = false;
+  } catch (e) {
+    showToast(`untrust failed: ${e.message}`);
+    btn.disabled = false;
   }
 }
 
