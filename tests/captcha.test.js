@@ -30,9 +30,15 @@ function installFetchStub() {
   originalFetch = global.fetch;
   fetchCalls = [];
   global.fetch = async (url, opts) => {
-    const method = methodFromUrl(String(url));
+    const u = String(url);
+    const method = methodFromUrl(u);
     const body = opts?.body ? JSON.parse(opts.body) : null;
-    fetchCalls.push({ method, body });
+    fetchCalls.push({ method, body, url: u });
+    // CAS check (api.cas.chat) — default to "not banned" so it doesn't
+    // short-circuit the captcha flow in tests. CAS reports a hit via ok:true.
+    if (u.includes('cas.chat')) {
+      return { ok: true, json: async () => ({ ok: false }) };
+    }
     return {
       ok: true,
       json: async () => ({ ok: true, result: { message_id: 1 } }),
@@ -110,7 +116,7 @@ describe('captcha.js — handleCallbackQuery', () => {
     pendingVerifications.delete(key);
   });
 
-  test('missing verification state fails open (unmutes) instead of leaving user stuck muted', async () => {
+  test('missing verification state re-issues a fresh captcha (no blind unmute, no ban)', async () => {
     const { userId, chatId } = freshIds();
     const callbackQuery = {
       id: 'cbq2',
@@ -122,11 +128,13 @@ describe('captcha.js — handleCallbackQuery', () => {
     await handleCallbackQuery(callbackQuery, res);
 
     assert.equal(res.statusCode, 200);
-    // C4 safety net: on lost state, the user must be unmuted (restrictChatMember
-    // with send permission restored), never banned.
+    // On lost state we must NOT blindly unmute (that would skip the answer check).
+    // Instead startVerification re-mutes (bounded) and sends a fresh captcha.
     const restrictCall = fetchCalls.find(c => c.method === 'restrictChatMember');
-    assert.ok(restrictCall, 'expected an unmute (restrictChatMember) call');
-    assert.equal(restrictCall.body.permissions.can_send_messages, true);
+    assert.ok(restrictCall, 'expected a re-mute (restrictChatMember) call');
+    assert.equal(restrictCall.body.permissions.can_send_messages, false, 'must re-mute, not unmute');
+    assert.ok(restrictCall.body.until_date, 'bounded mute (until_date) must be set');
+    assert.ok(fetchCalls.some(c => c.method === 'sendMessage'), 'expected a fresh captcha message');
     assert.ok(!fetchCalls.some(c => c.method === 'banChatMember'), 'must not ban on missing state');
   });
 
