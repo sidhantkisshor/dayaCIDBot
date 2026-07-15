@@ -6,7 +6,7 @@ import { isSpam } from '../lib/spam.js';
 import { handleCommand } from '../lib/commands.js';
 import { handleChatMember, handleCallbackQuery, handleNewChatMembers, cleanupExpiredVerifications } from '../lib/captcha.js';
 import { checkCAS } from '../lib/cas.js';
-import { getWarnings, setWarnings, deleteWarnings, incrementStat, isTrusted, addReport, getReportCount, clearReports, registerActiveChat, isNewMember, processAutoDeletes } from '../lib/state.js';
+import { incrementWarnings, deleteWarnings, incrementStat, isTrusted, addReport, getReportCount, clearReports, registerActiveChat, isNewMember, processAutoDeletes } from '../lib/state.js';
 import {
   SPAM_THRESHOLD, INSTANT_BAN_THRESHOLD,
   USER_REPORT_ACTION_THRESHOLD, USER_REPORT_BAN_THRESHOLD, USER_REPORT_BONUS,
@@ -114,8 +114,7 @@ async function handleMessage(message, res) {
       await deleteMessage(chatId, message.message_id);
       await incrementStat(chatId, 'deleted');
 
-      const warnings = (await getWarnings(chatId, userId)) + 1;
-      await setWarnings(chatId, userId, warnings);
+      const warnings = await incrementWarnings(chatId, userId);
 
       if (warnings >= getThreshold('MAX_WARNINGS_BEFORE_BAN')) {
         const banResult = await banUser(chatId, userId);
@@ -153,8 +152,7 @@ async function handleMessage(message, res) {
       await deleteMessage(chatId, message.message_id);
       await incrementStat(chatId, 'deleted');
 
-      const warnings = (await getWarnings(chatId, userId)) + 1;
-      await setWarnings(chatId, userId, warnings);
+      const warnings = await incrementWarnings(chatId, userId);
 
       if (warnings >= getThreshold('MAX_WARNINGS_BEFORE_BAN')) {
         const banResult = await banUser(chatId, userId);
@@ -206,8 +204,7 @@ async function handleMessage(message, res) {
 // ── Graduated Enforcement ──
 
 async function enforceSpam(chatId, userId, username, score, threadId) {
-  const warnings = (await getWarnings(chatId, userId)) + 1;
-  await setWarnings(chatId, userId, warnings);
+  const warnings = await incrementWarnings(chatId, userId);
 
   // Immediate ban for very high scores or 3rd offense
   if (score >= getThreshold('INSTANT_BAN_THRESHOLD') || warnings >= getThreshold('MAX_WARNINGS_BEFORE_BAN')) {
@@ -341,8 +338,7 @@ async function handleUserReport(message, res) {
       await deleteMessage(chatId, reportedMessage.message_id);
       await incrementStat(chatId, 'deleted');
 
-      const warnings = (await getWarnings(chatId, reportedUserId)) + 1;
-      await setWarnings(chatId, reportedUserId, warnings);
+      const warnings = await incrementWarnings(chatId, reportedUserId);
 
       if (warnings >= getThreshold('MAX_WARNINGS_BEFORE_BAN')) {
         const banResult = await banUser(chatId, reportedUserId);
