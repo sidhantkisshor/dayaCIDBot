@@ -35,7 +35,6 @@
       "mcp__claude_ai_Context7__resolve-library-id",
       "WebFetch(domain:www.chartjs.org)",
       "WebFetch(domain:api.cas.chat)",
-      "Bash(python -)",
       "Bash(git rev-list *)",
       "Bash(git branch *)"
     ],
