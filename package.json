@@ -4,7 +4,8 @@
   "description": "DayaCID Bot — Telegram anti-spam bot for trading communities",
   "type": "module",
   "scripts": {
-    "deploy": "vercel --prod"
+    "deploy": "vercel --prod",
+    "test": "node --test"
   },
   "engines": {
     "node": ">=18"
