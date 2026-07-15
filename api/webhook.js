@@ -1,7 +1,7 @@
 // DayaCID Bot — Webhook Handler (Thin Router)
 // All logic lives in lib/ modules. This file routes Telegram updates.
 
-import { sendMessage, deleteMessage, banUser, restrictUser, isAdmin, logToAdmin } from '../lib/telegram.js';
+import { sendMessage, deleteMessage, banUser, restrictUser, isAdmin, logToAdmin, escapeHtml } from '../lib/telegram.js';
 import { isSpam } from '../lib/spam.js';
 import { handleCommand } from '../lib/commands.js';
 import { handleChatMember, handleCallbackQuery, handleNewChatMembers, cleanupExpiredVerifications } from '../lib/captcha.js';
@@ -121,7 +121,7 @@ async function handleMessage(message, res) {
         const banResult = await banUser(chatId, userId);
         if (banResult?.ok) {
           await sendMessage(chatId,
-            `🚫 <b>Tod diya isko! ${username}</b>\n` +
+            `🚫 <b>Tod diya isko! ${escapeHtml(username)}</b>\n` +
             `<i>Repeated forwarding from channels/groups</i>`,
             true, threadId
           );
@@ -135,7 +135,7 @@ async function handleMessage(message, res) {
         const until = Math.floor(Date.now() / 1000) + MUTE_DURATION_2ND;
         await restrictUser(chatId, userId, { canSend: false }, until);
         await sendMessage(chatId,
-          `🔇 <b>${username}</b> muted for 24 hours.\n` +
+          `🔇 <b>${escapeHtml(username)}</b> muted for 24 hours.\n` +
           `<i>Forwarding from channels/groups is not allowed. Next offense = ban.</i>`,
           true, threadId
         );
@@ -159,7 +159,7 @@ async function handleMessage(message, res) {
         const banResult = await banUser(chatId, userId);
         if (banResult?.ok) {
           await sendMessage(chatId,
-            `🚫 <b>Tod diya isko! ${username}</b>\n` +
+            `🚫 <b>Tod diya isko! ${escapeHtml(username)}</b>\n` +
             `<i>Repeated forwarding violations</i>`,
             true, threadId
           );
@@ -169,7 +169,7 @@ async function handleMessage(message, res) {
         await deleteWarnings(chatId, userId);
       } else {
         await sendMessage(chatId,
-          `⚠️ <b>${username}</b> - Forwarding messages is not allowed! Last warning.`,
+          `⚠️ <b>${escapeHtml(username)}</b> - Forwarding messages is not allowed! Last warning.`,
           true, threadId
         );
         await incrementStat(chatId, 'warned');
@@ -211,7 +211,7 @@ async function enforceSpam(chatId, userId, username, score, threadId) {
   if (score >= getThreshold('INSTANT_BAN_THRESHOLD') || warnings >= getThreshold('MAX_WARNINGS_BEFORE_BAN')) {
     const banResult = await banUser(chatId, userId);
     if (banResult?.ok) {
-      await sendMessage(chatId, `🚫 <b>Tod diya isko! ${username}</b>`, true, threadId);
+      await sendMessage(chatId, `🚫 <b>Tod diya isko! ${escapeHtml(username)}</b>`, true, threadId);
       logToAdmin('SPAM BAN', chatId, userId, username,
         `Score: ${score}, Warnings: ${warnings}`);
       await incrementStat(chatId, 'banned');
@@ -225,7 +225,7 @@ async function enforceSpam(chatId, userId, username, score, threadId) {
     const until = Math.floor(Date.now() / 1000) + MUTE_DURATION_2ND;
     await restrictUser(chatId, userId, { canSend: false }, until);
     await sendMessage(chatId,
-      `🔇 <b>${username}</b> muted for 24 hours.\n` +
+      `🔇 <b>${escapeHtml(username)}</b> muted for 24 hours.\n` +
       `<i>Next offense = permanent ban</i>`,
       true, threadId
     );
@@ -238,7 +238,7 @@ async function enforceSpam(chatId, userId, username, score, threadId) {
   const until = Math.floor(Date.now() / 1000) + MUTE_DURATION_1ST;
   await restrictUser(chatId, userId, { canSend: false }, until);
   await sendMessage(chatId,
-    `🔇 <b>${username}</b> muted for 1 hour.\n` +
+    `🔇 <b>${escapeHtml(username)}</b> muted for 1 hour.\n` +
     `<i>Warning 1/${getThreshold('MAX_WARNINGS_BEFORE_BAN') - 1} — repeated violations will result in a ban</i>`,
     true, threadId
   );
@@ -279,7 +279,7 @@ async function handleUserReport(message, res) {
     const restrictResult = await restrictUser(chatId, reportedUserId, { canSend: false }, until);
     if (restrictResult?.ok) {
       await sendMessage(chatId,
-        `🔇 <b>${reportedUsername}</b> restricted for 24 hours.\n` +
+        `🔇 <b>${escapeHtml(reportedUsername)}</b> restricted for 24 hours.\n` +
         `<i>Reported by ${reportCount} members</i>`,
         true, threadId
       );
@@ -291,7 +291,7 @@ async function handleUserReport(message, res) {
       const banResult = await banUser(chatId, reportedUserId);
       if (banResult?.ok) {
         await sendMessage(chatId,
-          `🚫 <b>Tod diya isko! ${reportedUsername}</b>\n` +
+          `🚫 <b>Tod diya isko! ${escapeHtml(reportedUsername)}</b>\n` +
           `<i>Reported by ${reportCount} members</i>`,
           true, threadId
         );
@@ -316,8 +316,8 @@ async function handleUserReport(message, res) {
       const banResult = await banUser(chatId, reportedUserId);
       if (banResult?.ok) {
         await sendMessage(chatId,
-          `🚫 <b>Tod diya isko! ${reportedUsername}</b>\n` +
-          `<i>Reported by ${username}</i>`,
+          `🚫 <b>Tod diya isko! ${escapeHtml(reportedUsername)}</b>\n` +
+          `<i>Reported by ${escapeHtml(username)}</i>`,
           true, threadId
         );
         logToAdmin('REPORT BAN', chatId, reportedUserId, reportedUsername,
@@ -338,7 +338,7 @@ async function handleUserReport(message, res) {
         const banResult = await banUser(chatId, reportedUserId);
         if (banResult?.ok) {
           await sendMessage(chatId,
-            `🚫 <b>Tod diya isko! ${reportedUsername}</b>\n` +
+            `🚫 <b>Tod diya isko! ${escapeHtml(reportedUsername)}</b>\n` +
             `<i>Multiple violations</i>`,
             true, threadId
           );
@@ -352,8 +352,8 @@ async function handleUserReport(message, res) {
         const until = Math.floor(Date.now() / 1000) + MUTE_DURATION_1ST;
         await restrictUser(chatId, reportedUserId, { canSend: false }, until);
         await sendMessage(chatId,
-          `🔇 <b>${reportedUsername}</b> muted for 1 hour.\n` +
-          `<i>Reported by ${username} (${reportCount}/${REPORTS_FOR_AUTO_ACTION} reports)</i>`,
+          `🔇 <b>${escapeHtml(reportedUsername)}</b> muted for 1 hour.\n` +
+          `<i>Reported by ${escapeHtml(username)} (${reportCount}/${REPORTS_FOR_AUTO_ACTION} reports)</i>`,
           true, threadId
         );
         logToAdmin('REPORT MUTE', chatId, reportedUserId, reportedUsername,
@@ -363,7 +363,7 @@ async function handleUserReport(message, res) {
     } else {
       // Not enough evidence — show report progress
       await sendMessage(chatId,
-        `📋 Report noted. Monitoring <b>${reportedUsername}</b> (${reportCount}/${REPORTS_FOR_AUTO_ACTION} reports)`,
+        `📋 Report noted. Monitoring <b>${escapeHtml(reportedUsername)}</b> (${reportCount}/${REPORTS_FOR_AUTO_ACTION} reports)`,
         true, threadId
       );
     }
