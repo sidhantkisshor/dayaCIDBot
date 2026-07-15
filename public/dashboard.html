@@ -858,10 +858,14 @@ function dashFetch(path, opts = {}) {
       'Content-Type': 'application/json',
       ...(opts.headers || {}),
     },
-  }).then(r => {
+  }).then(async r => {
     if (r.status === 401 || r.status === 403) {
       doLogout();
       throw new Error('Unauthorized');
+    }
+    if (!r.ok) {
+      const body = await r.json().catch(() => ({}));
+      throw new Error(body.error || `Request failed (${r.status})`);
     }
     return r.json();
   });
@@ -973,6 +977,10 @@ function formatNum(n) {
 
 // ── Chart ──
 function initChart() {
+  if (trendChart) {
+    trendChart.destroy();
+    trendChart = null;
+  }
   const ctx = document.getElementById('trend-chart').getContext('2d');
   trendChart = new Chart(ctx, {
     type: 'line',
@@ -1034,24 +1042,71 @@ async function loadActivity() {
 
     // Show newest first
     const reversed = [...list].reverse();
-    container.innerHTML = reversed.map(item => {
+    container.innerHTML = '';
+    for (const item of reversed) {
       const time = new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const tag = getTag(item.action);
       const hasIds = item.chatId && item.userId;
-      const actBtns = hasIds
-        ? `<span class="activity-actions">
-            <button class="act-btn act-ban" onclick="quickAction('ban',${Number(item.chatId)},${Number(item.userId)},'${escAttr(item.username||'')}',this)" title="Ban user">BAN</button>
-            <button class="act-btn act-unban" onclick="quickAction('unban',${Number(item.chatId)},${Number(item.userId)},'${escAttr(item.username||'')}',this)" title="Unban user">UNBAN</button>
-          </span>`
-        : '';
-      return `<div class="activity-item">
-        <span class="activity-time">${time}</span>
-        <span class="activity-tag ${tag.cls}">${tag.label}</span>
-        <span class="activity-detail"><strong>${esc(item.username || '?')}</strong> ${esc(item.details || '')}</span>
-        ${actBtns}
-      </div>`;
-    }).join('');
+
+      const row = document.createElement('div');
+      row.className = 'activity-item';
+
+      const timeEl = document.createElement('span');
+      timeEl.className = 'activity-time';
+      timeEl.textContent = time;
+      row.appendChild(timeEl);
+
+      const tagEl = document.createElement('span');
+      tagEl.className = `activity-tag ${tag.cls}`;
+      tagEl.textContent = tag.label;
+      row.appendChild(tagEl);
+
+      const detailEl = document.createElement('span');
+      detailEl.className = 'activity-detail';
+      const strongEl = document.createElement('strong');
+      strongEl.textContent = item.username || '?';
+      detailEl.appendChild(strongEl);
+      detailEl.appendChild(document.createTextNode(' ' + (item.details || '')));
+      row.appendChild(detailEl);
+
+      if (hasIds) {
+        const actions = document.createElement('span');
+        actions.className = 'activity-actions';
+
+        const banBtn = document.createElement('button');
+        banBtn.className = 'act-btn act-ban';
+        banBtn.title = 'Ban user';
+        banBtn.textContent = 'BAN';
+        banBtn.dataset.action = 'ban';
+        banBtn.dataset.chatId = String(Number(item.chatId));
+        banBtn.dataset.userId = String(Number(item.userId));
+        banBtn.dataset.username = item.username || '';
+        banBtn.addEventListener('click', onQuickActionClick);
+        actions.appendChild(banBtn);
+
+        const unbanBtn = document.createElement('button');
+        unbanBtn.className = 'act-btn act-unban';
+        unbanBtn.title = 'Unban user';
+        unbanBtn.textContent = 'UNBAN';
+        unbanBtn.dataset.action = 'unban';
+        unbanBtn.dataset.chatId = String(Number(item.chatId));
+        unbanBtn.dataset.userId = String(Number(item.userId));
+        unbanBtn.dataset.username = item.username || '';
+        unbanBtn.addEventListener('click', onQuickActionClick);
+        actions.appendChild(unbanBtn);
+
+        row.appendChild(actions);
+      }
+
+      container.appendChild(row);
+    }
   } catch { /* handled */ }
+}
+
+function onQuickActionClick(e) {
+  const btn = e.currentTarget;
+  const { action, chatId, userId, username } = btn.dataset;
+  quickAction(action, Number(chatId), Number(userId), username, btn);
 }
 
 function getTag(action) {
