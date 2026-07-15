@@ -110,7 +110,7 @@ describe('captcha.js — handleCallbackQuery', () => {
     pendingVerifications.delete(key);
   });
 
-  test('handles expired/missing verification gracefully', async () => {
+  test('missing verification state fails open (unmutes) instead of leaving user stuck muted', async () => {
     const { userId, chatId } = freshIds();
     const callbackQuery = {
       id: 'cbq2',
@@ -122,9 +122,12 @@ describe('captcha.js — handleCallbackQuery', () => {
     await handleCallbackQuery(callbackQuery, res);
 
     assert.equal(res.statusCode, 200);
-    const answerCall = fetchCalls.find(c => c.method === 'answerCallbackQuery');
-    assert.ok(answerCall);
-    assert.match(answerCall.body.text, /expired/i);
+    // C4 safety net: on lost state, the user must be unmuted (restrictChatMember
+    // with send permission restored), never banned.
+    const restrictCall = fetchCalls.find(c => c.method === 'restrictChatMember');
+    assert.ok(restrictCall, 'expected an unmute (restrictChatMember) call');
+    assert.equal(restrictCall.body.permissions.can_send_messages, true);
+    assert.ok(!fetchCalls.some(c => c.method === 'banChatMember'), 'must not ban on missing state');
   });
 
   test('correct answer unmutes user, deletes challenge message, and clears pending state', async () => {
